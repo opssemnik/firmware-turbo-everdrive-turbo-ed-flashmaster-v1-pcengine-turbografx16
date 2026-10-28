@@ -12,7 +12,7 @@ import search_asm
 import loader_asm
 import extra_asm
 
-MOD_VERSION = 16
+MOD_VERSION = 17
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -485,24 +485,27 @@ def build(src, dst):
     rom.d[0x027d:0x0280] = bytes([0xa9, BG_SCROLL & 0xff, 0xea])
     rom.d[0x0283:0x0286] = bytes([0xa9, BG_SCROLL >> 8, 0xea])
 
-    # build date/time for the about screen: header bytes $f4-$f7 (the OS reads them from the
-    # flashed copy at boot). Date = FAT date, time = seconds since midnight / 2, big-endian.
+    # build date/time for the about screen. Date = FAT date, time = seconds since midnight / 2.
+    # The stock about screen shows $2b8a-$2b8d, filled by $FF29 from flash bank $40 bytes $f4-$f7.
+    # $FF29 must stay stock: the OS also calls it right after setting the cart registers to start
+    # a game, and that flash read is part of the start sequence (v15/v16 changed it and games
+    # stopped starting). So the about screen reads 4 bytes in bank 12 (always at $8000) instead.
     import datetime
     now = datetime.datetime.now()
-    rom.expect(0xf4, 'ff ff ff ff')
+    rom.expect(0x1f29, '43 08 8d 8e 2c a9 40 53 08 ad f4 60 8d 8b 2b ad f5 60 8d 8a 2b ad f6 60 8d 8d 2b '
+                       'ad f7 60 8d 8c 2b ad 8e 2c 53 08 60')
     date_w = now.day | now.month << 5 | (now.year - 1980) << 9
     time_w = (now.hour * 3600 + now.minute * 60 + now.second) // 2
-    rom.d[0xf4:0xf8] = bytes([date_w >> 8, date_w & 0xff, time_w >> 8, time_w & 0xff])
-    # the OS reads them through flash bank $40, which on the cart is the firmware area (it showed
-    # the cart's own 2012 date), and bank $00 there isn't this OS either (it showed 2176); so the
-    # read routine at $FF2E now stores the four bytes as immediates
-    rom.expect(0x1f2e, 'a9 40 53 08 ad f4 60 8d 8b 2b ad f5 60 8d 8a 2b ad f6 60 8d 8d 2b ad f7 60 8d 8c 2b '
-                       'ad 8e 2c 53 08 60')
-    code = b''
-    for val, addr in zip(rom.d[0xf4:0xf8], (0x2b8b, 0x2b8a, 0x2b8d, 0x2b8c)):
-        code += bytes([0xa9, val, 0x8d, addr & 0xff, addr >> 8])   # lda #val / sta addr
-    code += bytes([0xad, 0x8e, 0x2c, 0x53, 0x08, 0x60])            # restore MPR3, rts
-    rom.d[0x1f2e:0x1f2e + 34] = code + b'\xea' * (34 - len(code))
+    DATE_AT = 0x9ff0                                    # bank 12: $2b8a,$2b8b,$2b8c,$2b8d
+    rom.expect(foff(12, DATE_AT), 'ff ff ff ff')
+    rom.put(foff(12, DATE_AT), bytes([date_w & 0xff, date_w >> 8, time_w & 0xff, time_w >> 8]))
+    refs = 0
+    for o in range(foff(11, 0xa000), foff(11, 0xa000) + 0x2000 - 2):
+        if rom.d[o] in (0xad, 0xae) and rom.d[o + 2] == 0x2b and 0x8a <= rom.d[o + 1] <= 0x8d:
+            a = DATE_AT + rom.d[o + 1] - 0x8a                 # lda/ldx $2b8x -> lda/ldx $9ffx
+            rom.d[o + 1:o + 3] = bytes([a & 0xff, a >> 8])
+            refs += 1
+    assert refs == 22, refs
     print('  build date %s' % now.strftime('%d.%m.%Y %H:%M:%S'))
     open(dst, 'wb').write(rom.d)
     print('built %s  (%s)  md5 %s' % (dst, VERSION_STR, hashlib.md5(rom.d).hexdigest()))

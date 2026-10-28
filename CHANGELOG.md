@@ -1,5 +1,9 @@
 # Histórico
 
+## PT-BR v17
+- **Corrige o carregamento de jogos, que estava quebrado na v15 e na v16** (a tela de carregar bugava e o jogo não iniciava). A rotina do OS que lia a data também faz parte da sequência que inicia o jogo, e as duas versões tinham mexido nela. Ela voltou a ser a original.
+- A data e a hora de compilação agora ficam no próprio OS (banco 12) e a tela Sobre lê de lá.
+
 ## PT-BR v16
 - **Data/Hora Compil.** corrigidas de novo: na v15 a leitura passou para o banco `$00` da flash, mas no cartucho esse banco também não é o OS (aparecia 09.12.2176 06:26:38). Agora a data e a hora ficam gravadas direto no código, sem ler a flash.
 

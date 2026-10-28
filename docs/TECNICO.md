@@ -160,7 +160,7 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - O teste `test_v12.py` confere no emulador que a sequência de gravações na flash é idêntica à do OS sem a barra.
 
 ### Data e hora de compilação
-- No boot, o OS (`$FF29`) lê 4 bytes do banco de flash `$40`, offset `$F4`, e guarda em `$2B8A`–`$2B8D`; só a tela Sobre usa esses valores. No console, esse banco é a área do firmware do cartucho (mostrava 31.07.2012 16:42:54, a data do firmware), não o OS. Trocar o banco por `$00` (v15) também não funcionou no console (mostrava 09.12.2176). Desde a v16, o build reescreve a rotina em `$FF2E` com `lda #valor / sta $2B8x` para os 4 bytes, então nada é lido da flash.
+- No boot, o OS (`$FF29`) lê 4 bytes do banco de flash `$40`, offset `$F4`, e guarda em `$2B8A`–`$2B8D`; só a tela Sobre usa esses valores. No console, esse banco é a área do firmware do cartucho (mostrava 31.07.2012 16:42:54, a data do firmware), não o OS. **Essa rotina não pode ser alterada:** o OS também a chama (banco 5, `$B8A3`) logo depois de configurar os registradores do cartucho para iniciar o jogo, e essa leitura da flash faz parte da sequência de início. Na v15 (banco `$00`) e na v16 (sem leitura) os jogos pararam de iniciar. Desde a v17, a rotina é a original e o build grava a data em 4 bytes no banco 12 (`$9FF0`, sempre mapeado em `$8000`); as 22 leituras de `$2B8A`–`$2B8D` da tela Sobre (banco 11) passam a apontar para lá. O build confere que `$FF29` continua idêntico ao original.
 - Formato (big-endian): data no padrão FAT (dia bits 0–4, mês 5–8, ano − 1980 nos bits 9–15); hora = segundos desde a meia-noite ÷ 2. O OS original deixa `FF FF FF FF`, por isso mostrava "31.15.2235".
 - `build.py` grava ali o momento da compilação.
 
