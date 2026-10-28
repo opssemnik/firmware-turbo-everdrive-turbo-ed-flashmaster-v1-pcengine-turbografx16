@@ -9,7 +9,10 @@ Layout v3 (512-byte sectors, offsets relative to the file start):
                 then 7 entries x 64 bytes: dir cluster u32 (0 = empty), seq u16, file cluster u32, name[54]
   header byte 19 = number of themes, bytes 20-23 = sector of the theme table (0 = built-in themes)
   theme table   32 bytes per theme: 9 colours (u16, VCE format, slot order of build.SLOTS),
-                banner sector u32 (0 = default banner), name[10]
+                banner sector u32 (0 = default banner), splash sector u32 (0 = default), name[6]
+  splash        sector 0: palette (16 x u16) + tile sector count (u16 at byte 32);
+                8 sectors: BAT (32 rows x 64 words, palette 5, tiles $200+, already in scroll order);
+                then the tiles (4bpp, VRAM order)
   banner        5 sectors: palette (16 x u16), then 64 tiles (2 rows x 32, 4bpp, VRAM order)
   11..10+nb     index buckets: 64 entries x 8 bytes (hashA u16, hashB u16, art sector u32); sector 0 = end
   art blocks    13 sectors each: [magic "RGA1", hashA, hashB, palette 16 x u16] + 6144 bytes of sprites
@@ -48,6 +51,47 @@ def vce(rgb):
 
 THEMES_JSON = os.path.join(ROOT, 'themes', 'themes.json')
 BANNERS = os.path.join(ROOT, 'themes', 'banners')
+SPLASHES = os.path.join(ROOT, 'themes', 'splashes')
+
+
+def splash_block(path):
+    """256x224 PNG -> palette sector + BAT (8 sectors) + deduplicated tiles (VRAM tile $200+)."""
+    from PIL import Image
+    import art
+    im = Image.open(path).convert('RGB')
+    if im.size != (256, 224): raise SystemExit('%s: splash must be 256x224' % path)
+    q = lambda v: min(7, (v * 7 + 127) // 255)
+    px = im.load()
+    cols = []
+    idx = [[0] * 256 for _ in range(224)]
+    for y in range(224):
+        for x in range(256):
+            c = tuple(q(v) for v in px[x, y])
+            if c not in cols:
+                cols.append(c)
+                if len(cols) > 15: raise SystemExit('%s: more than 15 colours' % path)
+            idx[y][x] = cols.index(c) + 1
+    tiles, index = [], {}
+    bat = [[0] * 64 for _ in range(32)]
+    for ty in range(28):
+        for tx in range(32):
+            t = art.tile_bytes([idx[ty * 8 + y][tx * 8:tx * 8 + 8] for y in range(8)])
+            if t not in index:
+                index[t] = len(tiles); tiles.append(t)
+            bat[(ty + 30) % 32][tx] = (5 << 12) | (0x200 + index[t])
+    if len(tiles) > 512: raise SystemExit('%s: too many different tiles (%d > 512)' % (path, len(tiles)))
+    blank = bat[30][0]
+    for r in range(32):
+        for c in range(64):
+            if bat[r][c] == 0: bat[r][c] = blank
+    head = bytearray(512)
+    for i, c in enumerate([cols[0]] + cols):
+        struct.pack_into('<H', head, i * 2, vce(c))
+    tdata = b''.join(tiles)
+    tdata += bytes(-len(tdata) % 512)
+    struct.pack_into('<H', head, 32, len(tdata) // 512)
+    batb = b''.join(struct.pack('<H', w) for row in bat for w in row)
+    return bytes(head) + batb + tdata
 
 
 def banner_block(path):
@@ -90,7 +134,10 @@ def theme_section(first_sector):
         if t.get('banner'):
             struct.pack_into('<I', table, i * 32 + 18, first_sector + ntab + len(blocks) // 512)
             blocks += banner_block(os.path.join(BANNERS, t['banner']))
-        table[i * 32 + 22:i * 32 + 32] = t['name'].encode('latin-1', 'replace')[:10].ljust(10, b'\0')
+        if t.get('splash'):
+            struct.pack_into('<I', table, i * 32 + 22, first_sector + ntab + len(blocks) // 512)
+            blocks += splash_block(os.path.join(SPLASHES, t['splash']))
+        table[i * 32 + 26:i * 32 + 32] = t['name'].encode('latin-1', 'replace')[:6].ljust(6, b'\0')
     return bytes(table) + blocks, len(themes)
 
 
@@ -160,7 +207,7 @@ def build(sd, out, theme=0, keep=None):
         data[19] = tcount
         struct.pack_into('<I', data, 20, tsec)
         if theme >= tcount: data[16] = 0
-        print('themes: %d (%d banners)' % (tcount, (len(tdata) // 512 - (-(-tcount * 32 // 512))) // 5))
+        print('themes: %d, theme data %d KB' % (tcount, len(tdata) // 1024))
     open(out, 'wb').write(data)
     print('%s: %d games, %d images, %d index sectors, %.1f MB'
           % (out, len(entries), len(order), nb, len(data) / 1e6))

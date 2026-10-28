@@ -164,6 +164,15 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - Formato (big-endian): data no padrão FAT (dia bits 0–4, mês 5–8, ano − 1980 nos bits 9–15); hora = segundos desde a meia-noite ÷ 2. O OS original deixa `FF FF FF FF`, por isso mostrava "31.15.2235".
 - `build.py` grava ali o momento da compilação.
 
+### Splash por tema
+- Tabela de temas: bytes 22–25 = setor da splash (u32, 0 = splash padrão da ROM); o nome passou a ter 6 bytes (26–31).
+- Bloco da splash: setor 0 = paleta (16 cores, vai para a paleta 5) + número de setores de tiles (u16 no byte 32); 8 setores com o BAT inteiro (32×64 words, já na ordem do scroll de 16 px); depois os tiles (até 512, VRAM `$2000`).
+- Na abertura (`splash`), o mod chama `dat_init` na hora: o OS já montou a partição, mas ainda não preencheu o cluster da raiz (`$30BD`); nesse caso ele é lido do setor de boot da partição (`$30A3`, offset `$2C`). O tema salvo é aplicado (cores, banner) e, se tiver splash, ela é carregada do cartão (~22 setores).
+
+### Barra nas cores do tema e animação no apagar
+- Os tiles da barra usam a paleta 7, preenchida (`bar_frame`) com as cores atuais do tema: fundo da barra (CRAM `$32`), fundo da tela (`$02`), pastas (`$21`) e cursor (`$01`).
+- Antes de gravar, o OS apaga a flash com outra rotina em RAM (`$FB0D`, id `$04`): ela envia o comando de apagar para cada banco e espera num laço único até o chip terminar. Como não há andamento real para medir, o mod troca a rotina (`er_hook` → `prog_erase`) por uma cópia com uma animação: a cada 65.536 consultas ao status (~0,15 s), um bloco anda uma posição na barra vazia. Só escrita no VDC, nada é lido da flash.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.

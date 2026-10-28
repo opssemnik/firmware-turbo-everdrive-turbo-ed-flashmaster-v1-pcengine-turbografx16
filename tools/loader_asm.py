@@ -140,40 +140,168 @@ ld_end:
 '''
 
 # bank 13: set up the bar, then run the routine above from RAM
+ERASE = r'''
+    .db $04             ; routine id
+er_start:               ; fb0d(count = X:A, bank = stack): erase count banks of flash
+    pha
+    sec
+    lda <$00
+    sbc #$02
+    sta <$00
+    lda <$01
+    sbc #$00
+    sta <$01
+    pla
+    sax
+    sta [$00]
+    sax
+    ldy #$01
+    sta [$00],y
+    ldy #$02
+    lda [$00],y
+    tax
+    cla
+    tma #$08
+    pha
+    txa
+    tam #$08
+    lda #$aa
+    sta $6aaa
+    lda #$55
+    sta $6555
+    lda #$80
+    sta $6aaa
+    lda #$aa
+    sta $6aaa
+    lda #$55
+    sta $6555
+    ldy #$00
+    lda [$00],y
+    tax
+    cla
+er_cmd:
+    lda #$30
+    sta $6000
+    tma #$08
+    clc
+    adc #$01
+    tam #$08
+    dex
+    bne er_cmd
+er_wait:                ; the chip erases everything queued; one block moves every 65536 polls
+    lda $e004
+    and #$02
+    bne er_done
+    inc ECNT
+    bne er_wait
+    inc ECNT+1
+    bne er_wait
+    lda EBASE           ; clear the block at EPOS
+    clc
+    adc EPOS
+    st0 #$00
+    sta $0002
+    lda EBASE+1
+    adc #$00
+    sta $0003
+    st0 #$02
+    st1 #lo(BAR_EMPTY)
+    st2 #hi(BAR_EMPTY)
+    lda EPOS            ; next position, wrapping
+    inc a
+    cmp EBLK
+    bcc er_p
+    cla
+er_p:
+    sta EPOS
+    clc
+    adc EBASE
+    st0 #$00
+    sta $0002
+    lda EBASE+1
+    adc #$00
+    sta $0003
+    st0 #$02
+    st1 #lo(BAR_FULL)
+    st2 #hi(BAR_FULL)
+    bra er_wait
+er_done:
+    pla
+    tam #$08
+    pha
+    clc
+    lda <$00
+    adc #$04
+    sta <$00
+    lda <$01
+    adc #$00
+    sta <$01
+    pla
+    rts
+'''
+
+ERASE_VARS = {'ECNT': 0x2040, 'EPOS': 0x2042, 'EBASE': 0x2043, 'EBLK': 0x2045}
+
+# bank 13: set up the bar, then run the routines above from RAM
 SETUP = r'''
 ; ---------------------------------------------------------------- loading progress bar
 BAR_ROW = 18
 BAR_TILE = $1c0         ; empty, $1c1 full (VRAM $1c00)
+ECNT = $2040            ; erase animation (the game screen variables are free by now)
+EPOS = $2042
+EBASE = $2043
+EBLK = $2045
+ESTEP = $2046
 
-prog_setup:             ; X = number of 8 KB banks to copy
+prog_setup:             ; copy phase. X = number of 8 KB banks to copy
     tii ld_routine,$2b8e,$0100
-    txa                 ; banks per block = ceil(banks / 26)
-    clc
-    adc #25
-    ldy #$00
-ps_div:
-    cmp #26
-    bcc ps_d
-    sbc #26
-    iny
-    bra ps_div
-ps_d:
-    tya
-    bne ps_s1
-    iny
-ps_s1:
+    jsr bar_frame
     sty LD_STEP_RAM     ; patch the routine's "lda #step"
     sty PCNT
-    stx R               ; blocks = ceil(banks / step)
-    stz R2
+    rts
+
+prog_erase:             ; erase phase: a block walks along the empty bar while the chip works
+    tii er_routine,$2b8e,$0100
+    jsr bar_frame
+    lda TMP
+    sta EBASE
+    lda CNT
+    sta EBASE+1
+    lda R2
+    sta EBLK
+    stz EPOS
+    stz ECNT
+    stz ECNT+1
+    st1 #lo($7000 + BAR_TILE + 1)
+    st2 #hi($7000 + BAR_TILE + 1)
+    rts
+
+bar_frame:              ; X = banks -> Y = banks per block, R2 = blocks, TMP/CNT = first block's
+    txa                 ; VRAM address; draws the empty bar; VDC left on it with register 2
+    clc                 ; banks per block = ceil(banks / 26)
+    adc #25
+    ldy #$00
+bf_div:
+    cmp #26
+    bcc bf_d
+    sbc #26
+    iny
+    bra bf_div
+bf_d:
+    tya
+    bne bf_s1
+    iny
+bf_s1:
+    sty ESTEP
+    stz R2              ; blocks = ceil(banks / step)
     txa
-ps_blk:
+bf_blk:
     inc R2
     sec
-    sbc LD_STEP_RAM
-    beq ps_b2
-    bcs ps_blk
-ps_b2:
+    sbc ESTEP
+    beq bf_b2
+    bcs bf_blk
+bf_b2:
     st0 #$00            ; tiles: VRAM $1c00
     st1 #$00
     st2 #$1c
@@ -183,40 +311,56 @@ ps_b2:
     sec
     sbc R2
     lsr a
-    sta R
-    clc                 ; MAWR = BAR_ROW * 64 + column
+    clc                 ; address = BAR_ROW * 64 + column
     adc #lo(BAR_ROW * 64)
     sta TMP
     lda #hi(BAR_ROW * 64)
     adc #$00
     sta CNT
+    jsr bf_addr
+    ldx R2              ; empty frame
+bf_e:
+    st1 #lo($7000 + BAR_TILE)
+    st2 #hi($7000 + BAR_TILE)
+    dex
+    bne bf_e
+    ldy #$03            ; palette 7 = the theme's bar bg, screen bg, folder and cursor colours
+bf_pc:
+    lda bar_src,y
+    sta VCE_A
+    stz VCE_AH
+    ldx VCE_D
+    lda VCE_DH
+    pha
+    tya
+    clc
+    adc #$71
+    sta VCE_A
+    stz VCE_AH
+    stx VCE_D
+    pla
+    sta VCE_DH
+    dey
+    bpl bf_pc
+    lda #$02
+    sta <$f7
+    jsr bf_addr         ; back to the start of the bar
+    ldy ESTEP
+    rts
+bf_addr:
     st0 #$00
     lda TMP
     sta $0002
     lda CNT
     sta $0003
     st0 #$02
-    ldx R2              ; empty frame
-ps_e:
-    st1 #lo($4000 + BAR_TILE)
-    st2 #hi($4000 + BAR_TILE)
-    dex
-    bne ps_e
-    st0 #$00            ; back to the start of the bar; the routine fills it
-    lda TMP
-    sta $0002
-    lda CNT
-    sta $0003
-    lda #$02
-    sta <$f7
-    st0 #$02
     rts
 '''
 
 
 def tiles():
-    """Two 8x8 tiles in palette 4 colours: 13 grey frame, 14 dark inside / 10 green fill."""
+    """Two 8x8 tiles in palette 7 (theme colours): 1 frame, 2 inside, 3 fill, 4 highlight."""
     from art import tile_bytes
-    empty = [[13] * 8] + [[13] + [14] * 6 + [13] for _ in range(6)] + [[13] * 8]
-    full = [[13] * 8] + [[13, 12] + [10] * 5 + [13]] + [[13] + [10] * 6 + [13] for _ in range(5)] + [[13] * 8]
+    empty = [[1] * 8] + [[1] + [2] * 6 + [1] for _ in range(6)] + [[1] * 8]
+    full = [[1] * 8] + [[1, 4] + [3] * 5 + [1]] + [[1] + [3] * 6 + [1] for _ in range(5)] + [[1] * 8]
     return tile_bytes(empty) + tile_bytes(full)

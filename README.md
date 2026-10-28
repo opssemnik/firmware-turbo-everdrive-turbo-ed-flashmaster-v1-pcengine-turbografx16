@@ -3,7 +3,7 @@
 Mod do sistema operacional (OS) do **Turbo EverDrive v1** da Krikzz para PC Engine / TurboGrafx-16.
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v13** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v14** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -21,17 +21,19 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 | ![Sobre](docs/screenshots/sobre.png) | **Tela Sobre** com a versão do mod, a data e hora de compilação e os créditos. |
 | ![Carregando](docs/screenshots/carregando.png) | **Barra de progresso** ao carregar o jogo, além das mensagens de carregamento e atualização traduzidas. |
 
-**Temas com SELECT** (toque e solte), salvos no cartão SD. Cada tema tem suas cores e pode ter **banner próprio**. A release traz 10, nesta ordem: Original (Retrogamer POA), **Retrochimp Games** (grupo do Arnaldo), **Maddrugamers** (canal no YouTube) e as variações Retrogamer POA Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo e Papel.
+**Temas com SELECT** (toque e solte), salvos no cartão SD. Cada tema tem suas cores e pode ter **banner** e **splash** próprios; a barra de progresso também segue as cores do tema. A release traz 10, nesta ordem: Original (Retrogamer POA), **Retrochimp Games** (grupo do Arnaldo), **Maddrugamers** (canal no YouTube) e as variações Retrogamer POA Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo e Papel.
 
 ![Temas](docs/screenshots/temas.png)
 
 ![Banners](docs/screenshots/banners.png)
 
+![Splashes](docs/screenshots/splashes.png)
+
 ### Criar seus temas e banners
 Os temas ficam no `RGPOA.DAT`, então dá para criar, editar ou remover sem regravar o firmware:
 
 1. Edite `themes/themes.json`. Cada tema tem um nome, as cores em `[R, G, B]` (0 a 7) e, opcionalmente, `"banner": "arquivo.png"`. A ordem no arquivo é a ordem no SELECT (máximo 32 temas).
-2. Banners: PNG de **256×16 pixels** com até **15 cores**, em `themes/banners/`. As cores são convertidas para a paleta do PC Engine (8 níveis por canal). Os exemplos são gerados por `python tools/theme_art.py`.
+2. Banners: PNG de **256×16 pixels** com até **15 cores**, em `themes/banners/`. Splash: PNG de **256×224** com até **15 cores** (e até 512 blocos 8×8 diferentes), em `themes/splashes/`, campo `"splash"`. As cores são convertidas para a paleta do PC Engine (8 níveis por canal). Os exemplos são gerados por `python tools/theme_art.py` e `python tools/splash_art.py`.
 3. Gere o `.dat` (`python tools/artpack.py --keep <RGPOA.DAT do SD>` mantém tema, favoritos e recentes) e copie para a raiz do SD.
 
 Sem `RGPOA.DAT` (ou com um `.dat` sem temas), o firmware usa os 8 temas de fábrica com o banner padrão.
@@ -99,6 +101,7 @@ Requer Python 3 e Pillow. O OS original é baixado automaticamente do site da Kr
 
 ```
 python tools/build.py        # -> out/TOS.PCE
+python tools/run_tests.py    # todos os testes em paralelo (~2 min); ou: run_tests.py v11 v14
 python tools/test_mod.py     # emulador headless: splash, menu, sobre, temas, carregamento
 python tools/test_v3.py      # capas + salvamento do tema (precisa de uma imagem de SD em sdcard_dump)
 python tools/test_v7.py      # tela do jogo, favoritos e recentes
@@ -106,7 +109,8 @@ python tools/test_v8.py      # menu, listas e "ir ao jogo"
 python tools/test_v9.py      # II num jogo, SELECT (tema), splash
 python tools/test_v10.py     # temas e banners do RGPOA.DAT
 python tools/test_v11.py     # busca global
-python tools/test_v12.py     # barra de progresso (gravações na flash idênticas às da v11)
+python tools/test_v12.py     # barra de progresso (gravações na flash idênticas às da versão anterior)
+python tools/test_v14.py     # splash por tema e barra nas cores do tema
 python tools/screenshots.py  # gera docs/screenshots/
 ```
 

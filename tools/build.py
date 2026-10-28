@@ -11,7 +11,7 @@ import cart_asm
 import search_asm
 import loader_asm
 
-MOD_VERSION = 13
+MOD_VERSION = 14
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -194,6 +194,16 @@ hub_far:                ; menu in bank 13 -> A = 0 back, 1 go to a game
     tya
     rts
 
+er_hook:                ; replaces the OS's $fb0d (erase flash): bar animation, then the RAM routine
+    sei
+    phx
+    pha
+    tma #$40
+    pha
+    lda #$0d
+    tam #$40
+    jsr prog_erase      ; X = banks to erase
+    bra lh_tail
 ld_hook:                ; replaces the OS's $fd54 (copy game to flash): bar setup, then the RAM routine
     sei
     phx
@@ -203,6 +213,7 @@ ld_hook:                ; replaces the OS's $fd54 (copy game to flash): bar setu
     lda #$0d
     tam #$40
     jsr prog_setup      ; X = banks to copy
+lh_tail:
     pla
     tam #$40
     pla
@@ -415,11 +426,16 @@ def build(src, dst):
     tables += cart_asm.tables(enc)
     tsym.update({'SEARCH_BANK': SPLASH_BANKS[1], 'SEARCH_ENTRY': search_asm.ORG})
     # loading progress: the OS's RAM copy routine, rebuilt with a bar block per 8 KB bank
-    lsym = {'PCNT': loader_asm.PCNT, 'BAR_FULL': 0x41c1}
+    lsym = {'PCNT': loader_asm.PCNT, 'BAR_FULL': 0x71c1}
     lcode, lsym = assemble(loader_asm.ROUTINE, loader_asm.RAM_ORG, lsym)
     if len(lcode) > 0x100: raise SystemExit('loader routine too big: %d' % len(lcode))
     tables += '\nld_routine: .db ' + ','.join(str(x) for x in lcode.ljust(0x100, bytes(1)))
+    esym = dict(loader_asm.ERASE_VARS, BAR_FULL=0x71c1, BAR_EMPTY=0x71c0)
+    ecode, _ = assemble(loader_asm.ERASE, loader_asm.RAM_ORG, esym)
+    if len(ecode) > 0x100: raise SystemExit('erase routine too big: %d' % len(ecode))
+    tables += '\ner_routine: .db ' + ','.join(str(x) for x in ecode.ljust(0x100, bytes(1)))
     tables += '\nbar_tiles: .db ' + ','.join(str(x) for x in loader_asm.tiles())
+    tables += '\nbar_src: .db $32,$02,$21,$01'
     tsym.update({'PCNT': loader_asm.PCNT, 'LD_STEP_RAM': lsym['ld_step'] + 1})
     tcode, tsym = assemble(cart_asm.BANK13 + loader_asm.SETUP + tables, 0xc400, tsym)
     if 0xc400 + len(tcode) > 0xe000: raise SystemExit('bank 13 overflow')
@@ -441,7 +457,7 @@ def build(src, dst):
     rom.d[foff(11, 0xad55):foff(11, 0xad57)] = bytes([sym['splash_entry'] & 0xff, sym['splash_entry'] >> 8])
 
     # 6. bank 0: SELECT/help hook + cls hook; vsync IRQ scrolls the BG by BG_SCROLL
-    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('idle', 'banner_draw', 'action', 'hub', 'prog_setup')})
+    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('idle', 'banner_draw', 'action', 'hub', 'prog_setup', 'prog_erase')})
     if 0xff63 + len(jcode) > 0xfff6: raise SystemExit('bank 0 hook overflow')
     rom.put(foff(0, 0xff63), jcode)
     rom.expect(foff(10, 0xa567), '20 e9 f8')
@@ -455,6 +471,8 @@ def build(src, dst):
     rom.d[foff(10, 0xb0ea):foff(10, 0xb0ec)] = bytes([hsym['hub10b'] & 0xff, hsym['hub10b'] >> 8])
     rom.expect(0x1d54, '78 ad 8e 2b c9 01 f0 07 73 66 fd 8e 2b 00 01 4c 8f 2b')  # copy game to flash
     rom.d[0x1d54:0x1d57] = bytes([0x4c, jsym['ld_hook'] & 0xff, jsym['ld_hook'] >> 8])
+    rom.expect(0x1b0d, '78 73 18 fb 8e 2b 00 01 4c 8f 2b')  # erase flash
+    rom.d[0x1b0d:0x1b10] = bytes([0x4c, jsym['er_hook'] & 0xff, jsym['er_hook'] >> 8])
     print('  loader routine %d bytes' % len(lcode))
     rom.expect(0x0da9, 'ad 6f 27')             # cls(): lda $276f
     rom.d[0x0da9:0x0dac] = bytes([0x4c, jsym['cls_new'] & 0xff, jsym['cls_new'] >> 8])

@@ -134,6 +134,9 @@ class Machine:
         self.cart[7] = 0x01
         self.cart[4] = 0x0b
         self.spi_latch = 0xff
+        self.erase_armed = False
+        self.erase_busy = 0                    # status reads left with "flash busy"
+        self.erase_reads = 0                   # per erased bank; 0 = erase finishes at once
         self.sd = sd
         self.flash_writes = []
         self.unk = {}
@@ -185,6 +188,9 @@ class Machine:
         if bank == 0xff: self.io_write(off, v); return
         if bank == 0 and off < 0x10: self.cart_write(off, v); return
         self.flash_writes.append((bank, off, v))
+        if bank >= 0x40:                       # AMD erase: $80 at $xaaa, later $30 = sector erase
+            if v == 0x80 and off & 0xfff == 0xaaa: self.erase_armed = True
+            elif v == 0x30 and self.erase_armed: self.erase_busy += self.erase_reads
         if len(self.flash_writes) > 100000: self.flash_writes = self.flash_writes[-1000:]
 
     def flash_read(self, bank, off):
@@ -198,6 +204,10 @@ class Machine:
             if self.cart[8] & 4 and self.sd:
                 self.spi_latch = self.sd.xfer(0xff)
             return v
+        if r == 4 and self.erase_busy:
+            self.erase_busy -= 1
+            if not self.erase_busy: self.erase_armed = False
+            return self.cart[4] & ~2
         return self.cart[r]
 
     def cart_write(self, r, v):

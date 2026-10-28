@@ -194,9 +194,22 @@ id_out:
     lda INJ
     rts
 
-splash:                 ; boot splash: palette 5, tiles (bank 14) at VRAM $2000, BAT (bank 15)
+splash:                 ; boot splash: the theme's (RGPOA.DAT) or the default (banks 14/15)
     php
     sei
+    lda FLAGS           ; the OS has mounted the card by now: find RGPOA.DAT and the saved theme
+    and #$01
+    bne sp_known
+    jsr dat_init
+sp_known:
+    lda SPLSEC
+    ora SPLSEC+1
+    ora SPLSEC+2
+    ora SPLSEC+3
+    beq sp_rom
+    jsr dat_splash
+    bcc sp_shown
+sp_rom:
     tma #$08
     pha
     lda #SPL_MAP_BANK
@@ -221,6 +234,7 @@ splash:                 ; boot splash: palette 5, tiles (bank 14) at VRAM $2000,
     tia $6000,$0002,4096
     pla
     tam #$08
+sp_shown:
     lda <$f7
     sta $0000
     plp
@@ -264,6 +278,7 @@ CARDTYPE = $2985        ; OS: bit0 = block addressing (SDHC)
 FS_DATA = $30b5         ; OS FAT: LBA of cluster 2
 FS_BPC = $30b9          ; OS FAT: bytes per cluster
 FS_ROOT = $30bd         ; OS FAT: root directory cluster
+FS_PART = $30a3         ; OS FAT: LBA of the partition (boot sector)
 SCR = $7c00             ; VRAM scratch for one sector
 ART_VRAM = $4000        ; sprite patterns
 
@@ -515,6 +530,30 @@ dat_init:
     sta T+2
     lda FS_ROOT+3
     sta T+3
+    ora T
+    ora T+1
+    ora T+2
+    bne di_root
+    ldx #$03            ; at boot the OS has not set the root cluster yet: read it from the
+di_bpb:                 ; partition's boot sector (offset $2c)
+    lda FS_PART,x
+    sta LBA,x
+    dex
+    bpl di_bpb
+    jsr read_scr
+    jcs di_fail
+    ldx #lo(SCR+22)
+    lda #hi(SCR)
+    jsr vram_r
+    lda $0002
+    sta T
+    lda $0003
+    sta T+1
+    lda $0002
+    sta T+2
+    lda $0003
+    sta T+3
+di_root:
     jsr clus2lba
     lda #ROOT_SECTORS
     sta R
@@ -2626,6 +2665,7 @@ THEMES_DAT = """
 TCOUNT = $20e4          ; themes in RGPOA.DAT (0 = built-in)
 TTAB = $20e5            ; theme table sector (relative, 4 bytes)
 BANCUST = $20e9         ; 1 = the active theme has its own banner (tiles $140+, palette 6)
+SPLSEC = $2058          ; splash sector of the active theme (0 = default splash)
 
 theme_count:            ; -> A = number of themes
     lda TCOUNT
@@ -2686,7 +2726,18 @@ td_col:
     sta T+2
     lda $0003
     sta T+3
+    ldx #$00            ; splash sector
+td_sp:
+    lda $0002
+    sta SPLSEC,x
+    inx
+    lda $0003
+    sta SPLSEC,x
+    inx
+    cpx #$04
+    bne td_sp
     stz BANCUST
+    lda T+3
     ora T
     ora T+1
     ora T+2
@@ -2720,6 +2771,67 @@ td_rows:
     jmp banner_rows
 td_ret:
     rts
+
+dat_splash:             ; SPLSEC -> palette 5, BAT, tiles at VRAM $2000. C=1 on error
+    ldx #$03
+dsp_t0:
+    lda SPLSEC,x
+    sta T,x
+    dex
+    bpl dsp_t0
+    jsr lba_from_dat
+    jsr read_scr
+    bcs dsp_err
+    ldx #lo(SCR)
+    lda #hi(SCR)
+    jsr vram_r
+    lda #$50
+    sta VCE_A
+    stz VCE_AH
+    ldx #$10
+dsp_pal:
+    lda $0002
+    sta VCE_D
+    lda $0003
+    sta VCE_DH
+    dex
+    bne dsp_pal
+    lda $0002           ; number of tile sectors
+    sta R2
+    lda $0003
+    lda #$01            ; BAT: 8 sectors after the header
+    jsr dsp_lba
+    ldx #$00
+    lda #$00
+    jsr vram_w
+    ldx #$08
+    jsr read_blocks
+    bcs dsp_err
+    lda #$09            ; tiles
+    jsr dsp_lba
+    ldx #$00
+    lda #$20
+    jsr vram_w
+    ldx R2
+    jsr read_blocks
+    rts
+dsp_err:
+    sec
+    rts
+dsp_lba:                ; LBA = DAT + SPLSEC + A
+    clc
+    adc SPLSEC
+    sta T
+    lda SPLSEC+1
+    adc #$00
+    sta T+1
+    lda SPLSEC+2
+    adc #$00
+    sta T+2
+    lda SPLSEC+3
+    adc #$00
+    sta T+3
+    jmp lba_from_dat
 
 banner_rows:            ; BAT rows 30-31 (the top of the screen): custom or default banner
     st0 #$00

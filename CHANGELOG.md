@@ -1,5 +1,11 @@
 # Histórico
 
+## PT-BR v14
+- **Splash por tema**: cada tema pode ter a própria tela de abertura (PNG 256×224 no `RGPOA.DAT`). A release traz splash para 9 temas, incluindo **Retrochimp Games** e **Maddrugamers**; o Original continua com a splash padrão.
+- No boot o mod já lê o `RGPOA.DAT`, então o tema salvo (cores, banner e splash) aparece desde a abertura.
+- **Barra de progresso nas cores do tema**, e uma animação na barra enquanto a flash é apagada (antes a barra só aparecia quando a gravação começava).
+- Testes e screenshots em paralelo (`tools/run_tests.py`): a bateria toda leva ~2 min.
+
 ## PT-BR v13.1 (só o `RGPOA.DAT`)
 - Nova ordem dos temas: Original, Retrochimp Games, Maddrugamers e depois as variações Retrogamer POA.
 

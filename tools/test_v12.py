@@ -34,10 +34,14 @@ def load(rom_path, downs, shots=None):
             m.render(os.path.join(OUT, 'v12_loading.png')); shots.append(1)
     return h.hexdigest(), n[0], bars
 
-old = os.path.join(OUT, 'release', 'TOS.PCE')       # v11
-new = os.path.join(OUT, 'TOS.PCE')
-for downs in (3, 9):
-    a = load(old, downs)
-    b = load(new, downs, [])
-    print('game #%d: flash writes v11 %d / v12 %d, identical: %s' % (downs, a[1], b[1], a[0] == b[0]))
-    print('   bar progress samples:', sorted(set(b[2]))[:3], '...', sorted(set(b[2]))[-2:])
+if __name__ == '__main__':
+    from concurrent.futures import ProcessPoolExecutor
+    old = os.path.join(OUT, 'release', 'TOS.PCE')       # the previous release
+    new = os.path.join(OUT, 'TOS.PCE')
+    with ProcessPoolExecutor() as ex:                     # the four loads run in parallel
+        jobs = {(d, v): ex.submit(load, rom, d, [] if v == 'new' else None)
+                for d in (3, 9) for v, rom in (('old', old), ('new', new))}
+        for downs in (3, 9):
+            a, b = jobs[(downs, 'old')].result(), jobs[(downs, 'new')].result()
+            print('game #%d: flash writes previous %d / new %d, identical: %s' % (downs, a[1], b[1], a[0] == b[0]))
+            print('   bar progress samples:', sorted(set(b[2]))[:3], '...', sorted(set(b[2]))[-2:])
