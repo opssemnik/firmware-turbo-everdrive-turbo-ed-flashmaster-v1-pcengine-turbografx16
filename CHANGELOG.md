@@ -1,5 +1,8 @@
 # Histórico
 
+## PT-BR v6
+- Splash de 2 segundos (antes 3).
+
 ## PT-BR v5
 - Ícones dos botões na linha de ajuda com contorno escuro: agora aparecem também no tema Papel (fundo claro).
 

@@ -9,7 +9,7 @@ from asm import assemble
 import art
 import cart_asm
 
-MOD_VERSION = 5
+MOD_VERSION = 6
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -108,7 +108,7 @@ EXTRA = {  # new strings used by the mod's own code
 HELP = [('II', 'Abrir'), ('RUN', 'Jogar'), ('I', 'Voltar'), ('SEL', 'Tema')]  # top help line
 SPLASH_LINES = [('Turbo EverDrive OS', 2), (VERSION_STR, 11), ('', 0), ('por Antonio & The Nobre', 5),
                 ('', 0), ('Aperte um botão', 3)]
-SPLASH_FRAMES = 180      # 3 s, or until a button is pressed
+SPLASH_FRAMES = 120      # 2 s, or until a button is pressed
 BG_SCROLL = 240          # BAT row 30 is the top screen row: rows 30-31 hold the banner
 SPLASH_BANKS = (14, 15)  # tiles, BAT map
 STR_BASE = 0x4110  # free space in bank 3 (mapped at $4000 by the OS)
