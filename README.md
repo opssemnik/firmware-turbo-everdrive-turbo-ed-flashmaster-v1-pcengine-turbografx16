@@ -21,7 +21,7 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 | ![Sobre](docs/screenshots/sobre.png) | **Tela Sobre** com a versão do mod, a data e hora de compilação e os créditos. |
 | ![Carregando](docs/screenshots/carregando.png) | **Barra de progresso** ao carregar o jogo, além das mensagens de carregamento e atualização traduzidas. |
 
-**Temas com SELECT** (toque e solte), salvos no cartão SD. Cada tema tem suas cores e pode ter **banner próprio**. A release traz 10: Original, Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo, Papel, **Retrochimp Games** (grupo do Arnaldo) e **Maddrugamers** (canal no YouTube).
+**Temas com SELECT** (toque e solte), salvos no cartão SD. Cada tema tem suas cores e pode ter **banner próprio**. A release traz 10, nesta ordem: Original (Retrogamer POA), **Retrochimp Games** (grupo do Arnaldo), **Maddrugamers** (canal no YouTube) e as variações Retrogamer POA Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo e Papel.
 
 ![Temas](docs/screenshots/temas.png)
 

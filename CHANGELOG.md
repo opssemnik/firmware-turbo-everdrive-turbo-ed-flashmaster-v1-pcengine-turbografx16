@@ -1,5 +1,8 @@
 # Histórico
 
+## PT-BR v13.1 (só o `RGPOA.DAT`)
+- Nova ordem dos temas: Original, Retrochimp Games, Maddrugamers e depois as variações Retrogamer POA.
+
 ## PT-BR v13
 - Tela Sobre: **Data/Hora Compil.** mostram quando o firmware foi gerado (antes aparecia "31.15.2235", porque o OS original não preenche esses bytes).
 - Removida a linha "SELECT no menu: muda o tema" da tela Sobre.
