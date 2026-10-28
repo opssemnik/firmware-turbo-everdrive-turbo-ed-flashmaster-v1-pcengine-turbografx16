@@ -160,7 +160,7 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - O teste `test_v12.py` confere no emulador que a sequência de gravações na flash é idêntica à do OS sem a barra.
 
 ### Data e hora de compilação
-- No boot, o OS lê os bytes `$F4`–`$F7` do cabeçalho da cópia instalada na flash (banco `$40`) e guarda em `$2B8A`–`$2B8D`. Só a tela Sobre usa esses valores.
+- No boot, o OS (`$FF29`) lê 4 bytes do banco de flash `$40`, offset `$F4`, e guarda em `$2B8A`–`$2B8D`; só a tela Sobre usa esses valores. No console, esse banco é a área do firmware do cartucho (mostrava 31.07.2012 16:42:54, a data do firmware), não o OS. O mod troca o banco lido por `$00`, o próprio OS, onde o build grava a data.
 - Formato (big-endian): data no padrão FAT (dia bits 0–4, mês 5–8, ano − 1980 nos bits 9–15); hora = segundos desde a meia-noite ÷ 2. O OS original deixa `FF FF FF FF`, por isso mostrava "31.15.2235".
 - `build.py` grava ali o momento da compilação.
 
@@ -172,6 +172,11 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 ### Barra nas cores do tema e animação no apagar
 - Os tiles da barra usam a paleta 7, preenchida (`bar_frame`) com as cores atuais do tema: fundo da barra (CRAM `$32`), fundo da tela (`$02`), pastas (`$21`) e cursor (`$01`).
 - Antes de gravar, o OS apaga a flash com outra rotina em RAM (`$FB0D`, id `$04`): ela envia o comando de apagar para cada banco e espera num laço único até o chip terminar. Como não há andamento real para medir, o mod troca a rotina (`er_hook` → `prog_erase`) por uma cópia com uma animação: a cada 65.536 consultas ao status (~0,15 s), um bloco anda uma posição na barra vazia. Só escrita no VDC, nada é lido da flash.
+
+### ← / → na tela do jogo
+- Código no banco 12 (`$8200`, `tools/extra_asm.py`): o OS mantém esse banco sempre em `$8000` (MPR4), então ele é chamado direto, sem trocar de banco.
+- `game_nav` usa as variáveis locais do navegador: índice (`sp+$0E`), linha (`sp+$09`) e início da página (`sp+$0B`). Também usa o total de itens (`$3A62`, máximo 224).
+- Abre o item vizinho com `open()` do OS; se for pasta (tamanho 0), não anda e reabre o item atual. Se for arquivo, atualiza as três variáveis, o cluster do arquivo, a capa (hash calculado do nome em `$3A64`) e o estado de favorito, e redesenha a tela. "Carregar" e "Voltar" passam a usar o jogo novo.
 
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.

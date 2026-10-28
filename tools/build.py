@@ -10,8 +10,9 @@ import art
 import cart_asm
 import search_asm
 import loader_asm
+import extra_asm
 
-MOD_VERSION = 14
+MOD_VERSION = 15
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -109,7 +110,7 @@ EXTRA = {  # new strings used by the mod's own code
 HELP = [('II', 'Abrir'), ('RUN', 'Jogar'), ('I', 'Voltar'), ('SEL', 'Tema')]  # top help line
 SPLASH_LINES = [('Turbo EverDrive OS', 2), (VERSION_STR, 11), ('', 0), ('por Antonio & The Nobre', 5),
                 ('', 0), ('Aperte um botão', 3)]
-SPLASH_FRAMES = 90       # 1.5 s, or until a button is pressed
+SPLASH_FRAMES = 120      # 2 s, or until a button is pressed
 BG_SCROLL = 240          # BAT row 30 is the top screen row: rows 30-31 hold the banner
 SPLASH_BANKS = (14, 15)  # tiles, BAT map
 STR_BASE = 0x4110  # free space in bank 3 (mapped at $4000 by the OS)
@@ -424,7 +425,7 @@ def build(src, dst):
     tsym.update({'B15_BANPAL': 0x7000, 'B15_SPLPAL': 0x7020, 'B15_BANMAP': 0x7040,
                  'B15_HELPMAP': 0x70c0, 'B15_BANTILES': 0x7100})
     tables += cart_asm.tables(enc)
-    tsym.update({'SEARCH_BANK': SPLASH_BANKS[1], 'SEARCH_ENTRY': search_asm.ORG})
+    tsym.update({'SEARCH_BANK': SPLASH_BANKS[1], 'SEARCH_ENTRY': search_asm.ORG, 'GAME_NAV': extra_asm.ORG})
     # loading progress: the OS's RAM copy routine, rebuilt with a bar block per 8 KB bank
     lsym = {'PCNT': loader_asm.PCNT, 'BAR_FULL': 0x71c1}
     lcode, lsym = assemble(loader_asm.ROUTINE, loader_asm.RAM_ORG, lsym)
@@ -443,6 +444,10 @@ def build(src, dst):
     scode, _ = assemble(search_asm.SRC + search_asm.tables(enc), search_asm.ORG, dict(tsym))
     if len(scode) > 0x800: raise SystemExit('search module too big: %d' % len(scode))
     rom.put(foff(SPLASH_BANKS[1], search_asm.ORG), scode)
+    xcode, xsym = assemble(extra_asm.SRC, extra_asm.ORG, dict(tsym))   # bank 12, always at $8000
+    assert xsym['game_nav'] == extra_asm.ORG
+    if extra_asm.ORG + len(xcode) > 0xa000: raise SystemExit('bank 12 module too big')
+    rom.put(foff(12, extra_asm.ORG), xcode)
 
     # 5. about screen: version text + credits; splash hook (bank 11, $a000)
     sym['splash'] = tsym['splash']
@@ -488,6 +493,10 @@ def build(src, dst):
     date_w = now.day | now.month << 5 | (now.year - 1980) << 9
     time_w = (now.hour * 3600 + now.minute * 60 + now.second) // 2
     rom.d[0xf4:0xf8] = bytes([date_w >> 8, date_w & 0xff, time_w >> 8, time_w & 0xff])
+    # the OS reads them through flash bank $40, which on the cart is the firmware area (it showed
+    # the cart's own 2012 date); read them from this OS's bank 0 instead
+    rom.expect(0x1f2e, 'a9 40 53 08 ad f4 60')
+    rom.d[0x1f2f] = 0x00
     print('  build date %s' % now.strftime('%d.%m.%Y %H:%M:%S'))
     open(dst, 'wb').write(rom.d)
     print('built %s  (%s)  md5 %s' % (dst, VERSION_STR, hashlib.md5(rom.d).hexdigest()))

@@ -1,5 +1,10 @@
 # Histórico
 
+## PT-BR v15
+- **Tela do jogo: ← / →** passam para o jogo anterior / seguinte da pasta (capa, favorito, Carregar e Voltar acompanham).
+- **Data/Hora Compil.** corrigidas no console: o OS lia esses bytes de uma área da flash que no cartucho é a do firmware (mostrava 31.07.2012). Agora são lidos do próprio OS.
+- Splash de 2 segundos.
+
 ## PT-BR v14
 - **Splash por tema**: cada tema pode ter a própria tela de abertura (PNG 256×224 no `RGPOA.DAT`). A release traz splash para 9 temas, incluindo **Retrochimp Games** e **Maddrugamers**; o Original continua com a splash padrão.
 - No boot o mod já lê o `RGPOA.DAT`, então o tema salvo (cores, banner e splash) aparece desde a abertura.

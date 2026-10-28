@@ -164,6 +164,8 @@ class Machine:
     def restore(blob):
         import pickle
         m = pickle.loads(blob)
+        for k, v in (('erase_armed', False), ('erase_busy', 0), ('erase_reads', 0)):
+            m.__dict__.setdefault(k, v)          # snapshots from older emulator versions
         m.cpu.irq_pending = m._irq
         return m
 
@@ -194,9 +196,7 @@ class Machine:
         if len(self.flash_writes) > 100000: self.flash_writes = self.flash_writes[-1000:]
 
     def flash_read(self, bank, off):
-        if 0x40 <= bank < 0x50:  # flash area holding the installed OS (= this ROM)
-            return self.rom[(bank - 0x40) * 0x2000 + off]
-        return 0xff
+        return 0xff              # the cart's other flash areas (firmware, games) are not modelled
 
     def cart_read(self, r):
         if r in (0, 1):  # reg1 mirrors reg0 (OS reads with TAI $e000)

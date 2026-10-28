@@ -3,7 +3,7 @@
 Mod do sistema operacional (OS) do **Turbo EverDrive v1** da Krikzz para PC Engine / TurboGrafx-16.
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v14** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v15** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -13,7 +13,7 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 |---|---|
 | ![Menu](docs/screenshots/menu.png) | **Interface em português** com acentos de verdade: a fonte ganhou á à â ã é ê í ó ô õ ú ç, maiúsculas, ü º ª. **Banner Retrogamer POA** no topo e **linha de ajuda** com os botões. |
 | ![Capa](docs/screenshots/capa.png) | **Capa do jogo** ao parar o cursor sobre ele. São 2.372 nomes de arquivo com capa, entre PC Engine e SuperGrafx, incluindo hacks, traduções e "Sounds". |
-| ![Ações](docs/screenshots/acoes.png) | **Tela do jogo** ao apertar RUN: capa, **Carregar**, **Favoritar / Remover favorito** e **Voltar**. Os jogos carregados entram na lista de **recentes**. |
+| ![Ações](docs/screenshots/acoes.png) | **Tela do jogo** ao apertar RUN ou II: capa, **Carregar**, **Favoritar / Remover favorito** e **Voltar**. **← / →** passam para o jogo anterior / seguinte da pasta. Os jogos carregados entram na lista de **recentes**. |
 | ![Menu](docs/screenshots/menu_principal.png) | **Menu** (botão I na raiz): **Favoritos**, **Recentes**, **Buscar** e **Sobre**. |
 | ![Favoritos](docs/screenshots/favoritos.png) | **Listas de favoritos e recentes**: escolher um jogo leva direto até ele (o OS entra na pasta, o cursor vai até o jogo e a tela do jogo abre). Favoritos e recentes ficam salvos no `RGPOA.DAT`. |
 | ![Busca](docs/screenshots/busca_teclado.png) | **Busca em todo o cartão**: digite parte do nome no teclado da tela (direcional + II, I apaga, RUN busca). O mod percorre todas as pastas do SD, sem gravar nada. |
@@ -38,7 +38,7 @@ Os temas ficam no `RGPOA.DAT`, então dá para criar, editar ou remover sem regr
 
 Sem `RGPOA.DAT` (ou com um `.dat` sem temas), o firmware usa os 8 temas de fábrica com o banner padrão.
 
-Ao ligar aparece uma **splash screen** por 1,5 segundo. Qualquer botão pula.
+Ao ligar aparece uma **splash screen** por 2 segundos. Qualquer botão pula.
 
 ## Botões
 
@@ -111,6 +111,7 @@ python tools/test_v10.py     # temas e banners do RGPOA.DAT
 python tools/test_v11.py     # busca global
 python tools/test_v12.py     # barra de progresso (gravações na flash idênticas às da versão anterior)
 python tools/test_v14.py     # splash por tema e barra nas cores do tema
+python tools/test_v15.py     # ← / → na tela do jogo
 python tools/screenshots.py  # gera docs/screenshots/
 ```
 

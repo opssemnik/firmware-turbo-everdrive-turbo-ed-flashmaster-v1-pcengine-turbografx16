@@ -1057,7 +1057,7 @@ MENU_STRINGS = {  # padded so a shorter text erases a longer one
     's_unfav':   '  Remover favorito',
     's_back':    '  Voltar          ',
     's_cur':     '>',
-    's_hint':    'RUN/II: confirmar   I: voltar',
+    's_hint':    'RUN/II:ok  I:voltar  <>:outro',
     's_added':   'Adicionado aos favoritos!     ',
     's_removed': 'Removido dos favoritos.       ',
     's_full':    'Favoritos cheios (56).        ',
@@ -1168,11 +1168,17 @@ ac_loop:
     bne ac_up
     bit #$40            ; down
     bne ac_down
+    bit #$a0            ; left / right: previous / next game (bank 12)
+    bne ac_lr
     bit #$0a            ; II or RUN
     bne ac_ok
     bit #$01            ; I
     bne ac_back
     bra ac_loop
+ac_lr:
+    jsr GAME_NAV
+    jcs ac_loop
+    jmp ac_cls
 ac_up:
     lda ACUR
     bne ac_up1
