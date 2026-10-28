@@ -1,5 +1,9 @@
 # Histórico
 
+## PT-BR v13
+- Tela Sobre: **Data/Hora Compil.** mostram quando o firmware foi gerado (antes aparecia "31.15.2235", porque o OS original não preenche esses bytes).
+- Removida a linha "SELECT no menu: muda o tema" da tela Sobre.
+
 ## PT-BR v12
 - **Barra de progresso** no "Carregando...": enche conforme cada bloco de 8 KB do jogo é gravado na flash.
 - `RGPOA.DAT` igual ao da v10/v11.

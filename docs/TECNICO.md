@@ -159,6 +159,11 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - Dentro da rotina, cada bloco é só `st1`/`st2` (escrita direta no VDC, que avança sozinho). Nada é lido da flash durante a gravação.
 - O teste `test_v12.py` confere no emulador que a sequência de gravações na flash é idêntica à do OS sem a barra.
 
+### Data e hora de compilação
+- No boot, o OS lê os bytes `$F4`–`$F7` do cabeçalho da cópia instalada na flash (banco `$40`) e guarda em `$2B8A`–`$2B8D`. Só a tela Sobre usa esses valores.
+- Formato (big-endian): data no padrão FAT (dia bits 0–4, mês 5–8, ano − 1980 nos bits 9–15); hora = segundos desde a meia-noite ÷ 2. O OS original deixa `FF FF FF FF`, por isso mostrava "31.15.2235".
+- `build.py` grava ali o momento da compilação.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.

@@ -3,7 +3,7 @@
 Mod do sistema operacional (OS) do **Turbo EverDrive v1** da Krikzz para PC Engine / TurboGrafx-16.
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v12** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v13** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -18,7 +18,7 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 | ![Favoritos](docs/screenshots/favoritos.png) | **Listas de favoritos e recentes**: escolher um jogo leva direto até ele (o OS entra na pasta, o cursor vai até o jogo e a tela do jogo abre). Favoritos e recentes ficam salvos no `RGPOA.DAT`. |
 | ![Busca](docs/screenshots/busca_teclado.png) | **Busca em todo o cartão**: digite parte do nome no teclado da tela (direcional + II, I apaga, RUN busca). O mod percorre todas as pastas do SD, sem gravar nada. |
 | ![Resultados](docs/screenshots/busca_resultados.png) | **Resultados** (até 64, ignorando maiúsculas/minúsculas): escolha um e o console vai até o jogo, como nos favoritos. |
-| ![Sobre](docs/screenshots/sobre.png) | **Tela Sobre** com a versão do mod e os créditos. |
+| ![Sobre](docs/screenshots/sobre.png) | **Tela Sobre** com a versão do mod, a data e hora de compilação e os créditos. |
 | ![Carregando](docs/screenshots/carregando.png) | **Barra de progresso** ao carregar o jogo, além das mensagens de carregamento e atualização traduzidas. |
 
 **Temas com SELECT** (toque e solte), salvos no cartão SD. Cada tema tem suas cores e pode ter **banner próprio**. A release traz 10: Original, Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo, Papel, **Retrochimp Games** (grupo do Arnaldo) e **Maddrugamers** (canal no YouTube).

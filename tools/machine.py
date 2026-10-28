@@ -188,6 +188,8 @@ class Machine:
         if len(self.flash_writes) > 100000: self.flash_writes = self.flash_writes[-1000:]
 
     def flash_read(self, bank, off):
+        if 0x40 <= bank < 0x50:  # flash area holding the installed OS (= this ROM)
+            return self.rom[(bank - 0x40) * 0x2000 + off]
         return 0xff
 
     def cart_read(self, r):

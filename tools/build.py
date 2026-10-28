@@ -11,7 +11,7 @@ import cart_asm
 import search_asm
 import loader_asm
 
-MOD_VERSION = 12
+MOD_VERSION = 13
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -105,7 +105,6 @@ EXTRA = {  # new strings used by the mod's own code
     'str_ver': VERSION_STR,
     'str_c1': 'Mod: Retrogamer POA',
     'str_c2': 'por Antonio & The Nobre',
-    'str_c3': 'SELECT no menu: muda o tema',
 }
 HELP = [('II', 'Abrir'), ('RUN', 'Jogar'), ('I', 'Voltar'), ('SEL', 'Tema')]  # top help line
 SPLASH_LINES = [('Turbo EverDrive OS', 2), (VERSION_STR, 11), ('', 0), ('por Antonio & The Nobre', 5),
@@ -309,12 +308,6 @@ about_credits:          ; runs after the last about label is drawn
     sta $2770
 """ + puts('str_c1', 4, 20) + puts('str_c2', 4, 22) + """
     pla
-    pha
-    and #$0f
-    ora #$10            ; palette 1 (file colour) for the hint
-    sta $2770
-""" + puts('str_c3', 2, 24) + """
-    pla
     sta $2770
     rts
 
@@ -469,6 +462,15 @@ def build(src, dst):
     rom.d[0x027d:0x0280] = bytes([0xa9, BG_SCROLL & 0xff, 0xea])
     rom.d[0x0283:0x0286] = bytes([0xa9, BG_SCROLL >> 8, 0xea])
 
+    # build date/time for the about screen: header bytes $f4-$f7 (the OS reads them from the
+    # flashed copy at boot). Date = FAT date, time = seconds since midnight / 2, big-endian.
+    import datetime
+    now = datetime.datetime.now()
+    rom.expect(0xf4, 'ff ff ff ff')
+    date_w = now.day | now.month << 5 | (now.year - 1980) << 9
+    time_w = (now.hour * 3600 + now.minute * 60 + now.second) // 2
+    rom.d[0xf4:0xf8] = bytes([date_w >> 8, date_w & 0xff, time_w >> 8, time_w & 0xff])
+    print('  build date %s' % now.strftime('%d.%m.%Y %H:%M:%S'))
     open(dst, 'wb').write(rom.d)
     print('built %s  (%s)  md5 %s' % (dst, VERSION_STR, hashlib.md5(rom.d).hexdigest()))
     print('  bank0 hook %d bytes, bank11 about %d bytes, bank13 themes %d bytes, strings %d bytes'
