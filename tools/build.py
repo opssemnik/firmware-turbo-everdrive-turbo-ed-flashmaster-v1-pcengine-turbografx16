@@ -9,7 +9,7 @@ from asm import assemble
 import art
 import cart_asm
 
-MOD_VERSION = 7
+MOD_VERSION = 8
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -147,11 +147,19 @@ joyhook:                ; replaces "jsr joy" in the file browser's wait-for-key 
     pha
     lda #$0d
     tam #$40
-    jsr idle            ; help line, RGPOA.DAT lookup, artwork
+    jsr idle            ; help line, RGPOA.DAT lookup, artwork; A = key to inject
+    tay
     pla
     tam #$40
     pla
     plx
+    cpy #$00            ; "go to game" presses keys for the user
+    beq jh_real
+    tya
+    tax
+    cla
+    rts
+jh_real:
     cpx #$04            ; SELECT and nothing else held?
     bne .out
     lda $222d           ; joytrg(0): newly pressed this frame
@@ -184,6 +192,18 @@ cls_orig:
     lda $276f           ; first instruction of the stock cls, overwritten by the jump
     jmp $edac
 
+hub_far:                ; menu in bank 13 -> A = 0 back, 1 go to a game
+    tma #$40
+    pha
+    lda #$0d
+    tam #$40
+    jsr hub
+    tay
+    pla
+    tam #$40
+    tya
+    rts
+
 act_far:                ; action screen in bank 13 -> A = 0 load, 1 back
     tma #$40
     pha
@@ -214,6 +234,22 @@ h10_back:               ; same as the OS does around the about screen: force a f
     stx $3b90
     sta $3b91
     jmp $b2bf
+
+hub10b:                 ; replaces "jsr about" at $b0e9 (I at the root)
+    jsr hub_far
+    cmp #$00
+    bne hb_go
+    rts                 ; back to the OS, which continues with jmp $b2bf
+hb_go:
+    pla                 ; not returning: enter the game's folder with the OS's own code
+    pla
+    lda #$02            ; the key local becomes II, as if the user opened a folder
+    ldy #$0d
+    sta [$00],y
+    lda #$04            ; the OS passes $3b92 + this local to enterdir: point it at $3b96
+    ldy #$08
+    sta [$00],y
+    jmp $af69
 """
 
 def puts(label, x, y):
@@ -393,15 +429,18 @@ def build(src, dst):
     rom.d[foff(11, 0xad55):foff(11, 0xad57)] = bytes([sym['splash_entry'] & 0xff, sym['splash_entry'] >> 8])
 
     # 6. bank 0: SELECT/help hook + cls hook; vsync IRQ scrolls the BG by BG_SCROLL
-    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('theme_next', 'idle', 'banner_draw', 'action')})
+    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('theme_next', 'idle', 'banner_draw', 'action', 'hub')})
     if 0xff63 + len(jcode) > 0xfff6: raise SystemExit('bank 0 hook overflow')
     rom.put(foff(0, 0xff63), jcode)
     rom.expect(foff(10, 0xa567), '20 e9 f8')
     rom.d[foff(10, 0xa568):foff(10, 0xa56a)] = bytes([jsym['joyhook'] & 0xff, jsym['joyhook'] >> 8])
-    hcode, hsym = assemble(HOOK10, 0xbf63, {'act_far': jsym['act_far']})
+    hcode, hsym = assemble(HOOK10, 0xbf63, {'act_far': jsym['act_far'], 'hub_far': jsym['hub_far']})
+    if 0xbf63 + len(hcode) > 0xc000: raise SystemExit('bank 10 hook overflow')
     rom.put(foff(10, 0xbf63), hcode)
     rom.expect(foff(10, 0xa96a), 'a5 00 38 e9 02')   # RUN on a file: start of the load path
     rom.d[foff(10, 0xa96a):foff(10, 0xa96d)] = bytes([0x4c, 0x63, 0xbf])
+    rom.expect(foff(10, 0xb0e9), '20 44 81')   # I at the root: jsr about
+    rom.d[foff(10, 0xb0ea):foff(10, 0xb0ec)] = bytes([hsym['hub10b'] & 0xff, hsym['hub10b'] >> 8])
     rom.expect(0x0da9, 'ad 6f 27')             # cls(): lda $276f
     rom.d[0x0da9:0x0dac] = bytes([0x4c, jsym['cls_new'] & 0xff, jsym['cls_new'] >> 8])
     rom.expect(0x027d, 'ad 10 22 8d 02 00 ad 11 22')  # vsync IRQ: BYR = bg_y

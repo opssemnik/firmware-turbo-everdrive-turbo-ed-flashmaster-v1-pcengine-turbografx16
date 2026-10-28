@@ -23,7 +23,7 @@ def entries(sector):
     for e in range(7):
         o = 16 + e * 64
         cl, seq = struct.unpack_from('<IH', d, o)
-        if cl: out.append((cl, seq, d[o + 6:o + 64].split(b'\0')[0].decode('latin-1')))
+        if cl: out.append((cl, seq, d[o + 10:o + 64].split(b'\0')[0].decode('latin-1')))
     return d[:12], out
 
 m = Machine(rom, fresh()); m.run_frames(600)

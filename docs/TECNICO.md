@@ -113,6 +113,18 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - Cada favorito ou recente guarda o cluster da pasta (`$30C1`), um número de sequência e os 56 primeiros caracteres do nome. Assim a próxima etapa consegue ir até o jogo.
 - Recentes: quando a lista está cheia, o mais antigo (menor sequência) é substituído. O `TOS.PCE` não é registrado.
 
+### Menu, listas e "ir ao jogo"
+- A chamada da tela Sobre (`$B0E9`, I na raiz) vira `jsr hub10b` (banco 10) → `hub_far` (banco 0) → `hub` (banco 13). "Sobre" no menu chama a tela original (`jsr $8144`).
+- Abrir arquivo do OS: `open(índice, $3A64 nome, $3B64, $3B68)` via `$810E` (banco 9 `$A000`; argumentos na pilha C e o último em X:A; a função desempilha). Preenche o nome, o cluster inicial (`$3B64`) e o tamanho (`$3B68`). O índice do cursor é a local `sp+$0E` do navegador.
+- A tela do jogo chama `open` para saber o cluster do arquivo selecionado; favoritos e recentes guardam cluster da pasta + cluster do arquivo.
+- Ordem de exibição: o OS monta em `$397D` um vetor de bytes "posição na lista → ordinal da entrada". O ordinal conta as entradas da pasta ignorando apagadas (`$E5`), `.`/`..`, partes de nome longo (attr `$0F`) e rótulo de volume. **Máximo de 224 itens por pasta.**
+- Ir ao jogo:
+  1. `$3B96` = cluster da pasta; `$30C1` = raiz; pilha de caminho (`$3C92`, profundidade `$3D12`) zerada.
+  2. A local de tecla (`sp+$0D`) vira II e o byte `sp+$08` vira 4 (o OS passa `$3B92 + esse byte` para `enterdir`, `$80EA`).
+  3. Salto para `$AF69`: o próprio OS entra na pasta e redesenha.
+  4. No primeiro frame ocioso, o mod acha o ordinal do arquivo varrendo a pasta (seguindo a FAT) e a posição dele em `$397D`, e confirma com `open(i)`.
+  5. O gancho do `joy(0)` devolve RIGHT × (i/20), DOWN × (i%20) e RUN, o que abre a tela do jogo.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.
@@ -125,8 +137,8 @@ Setores de 512 bytes, contados a partir do início do arquivo.
 
 | setor | conteúdo |
 |---|---|
-| 0 | `RGPOA-DAT-v2` + 4 zeros (16 bytes), tema (byte 16), nº de buckets (byte 17, potência de 2), versão (byte 18) |
-| 1 .. 8 | favoritos; 9 .. 10 recentes: `RGPOA-SLOT`, tipo (`F`/`R`), nº do setor, 4 zeros; depois 7 entradas de 64 bytes: `cluster u32` (0 = vazia), `seq u16`, `nome[58]` |
+| 0 | `RGPOA-DAT-v3` + 4 zeros (16 bytes), tema (byte 16), nº de buckets (byte 17, potência de 2), versão (byte 18) |
+| 1 .. 8 | favoritos; 9 .. 10 recentes: `RGPOA-SLOT`, tipo (`F`/`R`), nº do setor, 4 zeros; depois 7 entradas de 64 bytes: `cluster da pasta u32` (0 = vazia), `seq u16`, `cluster do arquivo u32`, `nome[54]` |
 | 11 .. 10+nb | buckets: 64 entradas de 8 bytes `hashA u16, hashB u16, setor u32` (setor 0 = fim) |
 | resto | capas, 13 setores cada: `"RGA1"`, 4 bytes reservados, 16 cores (u16 no formato do VCE: `GGGRRRBBB`), depois 6.144 bytes de padrões de sprite (6 sprites 32×64, células 16×16 com 4 planos) |
 

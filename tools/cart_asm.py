@@ -170,6 +170,8 @@ idle:                   ; every frame of the browser's wait-for-key loop
     bne id_init_done
     jsr dat_init
 id_init_done:
+    stz INJ
+    jsr goto_tick
     lda FLAGS
     and #$02
     beq id_out
@@ -178,6 +180,7 @@ id_out:
     lda <$f7
     sta $0000
     plp
+    lda INJ
     rts
 
 splash:                 ; boot splash: palette 5, tiles (bank 14) at VRAM $2000, BAT (bank 15)
@@ -237,6 +240,7 @@ ARG = $2030               ; 4 bytes, SD command argument
 H = $2034                 ; 4 bytes, computed hash
 T = $2038                 ; 4 bytes temp
 CNT = $203c
+CNT2 = $20de
 TMP = $203d
 R = $203e
 R2 = $203f
@@ -970,10 +974,13 @@ def tables(enc):
     t += '\nsat_act: .dw ' + sat(8, 40)
     t += '\nsat_off: .dw ' + ','.join('0' for _ in range(24))
     t += '\nname83: .db "RGPOA   DAT"'
-    t += '\ndat_magic: .db "RGPOA-DAT-v2",0,0,0,0'
+    t += '\ndat_magic: .db "RGPOA-DAT-v3",0,0,0,0'
     t += '\nslot_magic: .db "RGPOA-SLOT"'
     t += '\nopt_row: .db 5,8,11'
     t += '\nopt_tab: .dw s_load,s_fav,s_back,s_unfav'
+    t += '\nhub_row: .db 6,9,12'
+    t += '\nhub_tab: .dw s_mfav,s_mrec,s_mabout'
+    t += '\ntitle_tab: .dw s_tfav,s_trec'
     for name, text in MENU_STRINGS.items():
         t += '\n%s: .db %s' % (name, db(enc(text)))
     return t
@@ -991,6 +998,15 @@ MENU_STRINGS = {  # padded so a shorter text erases a longer one
     's_full':    'Favoritos cheios (56).        ',
     's_err':     'Erro ao gravar no SD.         ',
     's_nodat':   'Precisa do RGPOA.DAT no SD.   ',
+    's_menu':    'Menu',
+    's_mfav':    '  Favoritos',
+    's_mrec':    '  Recentes ',
+    's_mabout':  '  Sobre    ',
+    's_hint_menu': 'RUN/II: abrir    I: voltar   ',
+    's_tfav':    'Favoritos',
+    's_trec':    'Recentes ',
+    's_empty':   'Nenhum jogo nesta lista.',
+    's_hint_list': 'RUN/II: ir ao jogo  I: menu  ',
 }
 
 
@@ -1019,6 +1035,18 @@ MSG = $2054             ; status message pointer (0 = none)
 ADI = $2056             ; act_draw loop index (prt uses R/R2/TMP)
 
 action:                 ; -> A = 0 load, 1 back
+    ldy #$0e            ; browser local: index of the selected entry
+    lda [$00],y
+    tax
+    iny
+    lda [$00],y
+    jsr os_open
+    ldx #$03
+ac_fc:
+    lda $3b64,x
+    sta FILECL,x
+    dex
+    bpl ac_fc
     stz ACUR
     stz AFAV
     stz AART
@@ -1411,7 +1439,7 @@ ss_next:
     clc
     rts
 
-ent_match:              ; T = cluster; VRAM read pointer at the name. C=0 if same file
+ent_match:              ; T = dir cluster, VRAM read pointer at the file cluster. C=0 if same file
     ldx #$03
 em_cl:
     lda T,x
@@ -1419,22 +1447,18 @@ em_cl:
     bne em_no
     dex
     bpl em_cl
-    clx
-em_nm:
     lda $0002
-    cmp NAMEBUF,x
+    cmp FILECL
     bne em_no
-    cmp #$00
-    beq em_yes
-    inx
     lda $0003
-    cmp NAMEBUF,x
+    cmp FILECL+1
     bne em_no
-    cmp #$00
-    beq em_yes
-    inx
-    cpx #NAMELEN
-    bne em_nm
+    lda $0002
+    cmp FILECL+2
+    bne em_no
+    lda $0003
+    cmp FILECL+3
+    bne em_no
 em_yes:
     clc
     rts
@@ -1448,7 +1472,7 @@ slot_put:               ; A = sector index, X = entry, Y = 1 write this file / 0
     phy
     jsr slot_read       ; re-read + verify right before writing
     ply
-    bcs sp_ret
+    jcs sp_ret
     phy
     jsr ent_addr
     jsr vram_w
@@ -1471,7 +1495,15 @@ sp_cl:
     lda MAXSEQ+1
     adc #$00
     sta $0003
-    ldx #$00            ; name: 58 bytes, NUL padded
+    lda FILECL
+    sta $0002
+    lda FILECL+1
+    sta $0003
+    lda FILECL+2
+    sta $0002
+    lda FILECL+3
+    sta $0003
+    ldx #$00            ; name: 54 bytes, NUL padded
     stz TMP
 sp_nm:
     jsr sp_byte
@@ -1480,7 +1512,7 @@ sp_nm:
     jsr sp_byte
     sta $0003
     inx
-    cpx #58
+    cpx #54
     bne sp_nm
     jmp write_scr
 sp_byte:                ; X = index -> A = name byte, 0 after the end
@@ -1606,11 +1638,847 @@ ra_ret:
     rts
 """
 
-BANK13 = THEME + GFX + SDART + ACTION
+HUB = """
+; ---------------------------------------------------------------- menu (I at the root), lists, go to a game
+LCOUNT = $2058
+LCUR = $2059
+LTOP = $205a
+LKIND = $205b           ; 0 favourites, 1 recents
+GSTATE = $205c          ; 0 nothing, 1 find the game in the folder just entered, 2 inject keys
+GRIGHT = $205d
+GDOWN = $205e
+INJ = $205f
+LIST = $2060            ; entry ids (sector * 7 + entry), up to 56
+SEQS = $2098            ; recents sort keys (u16 each); shares space with LINE
+LINE = $2098            ; 48-byte buffer
+GDIR = $20c8
+GFILE = $20cc
+FILECL = $20d0
+DCL = $20d4             ; directory scan: current cluster
+ORD = $20d8             ; directory scan: ordinal (u16)
+HCUR = $20da
+LSEC = $20db
+LROW = $20dc
+LIDX = $20dd
+TBL = $397d             ; OS: display order -> entry ordinal (u8, max 224 entries per folder)
+FS_FAT = $30b1          ; OS FAT: LBA of the FAT
+PAGE = 16
+
+cpush:                  ; HuC C stack push: X = lo, A = hi
+    pha
+    lda <$00
+    sec
+    sbc #$02
+    sta <$00
+    bcs cpu1
+    dec <$01
+cpu1:
+    pla
+    ldy #$01
+    sta [$00],y
+    txa
+    sta [$00]
+    rts
+
+os_open:                ; OS open(index): X = lo, A = hi -> name at $3a64, cluster at $3b64
+    jsr cpush
+    ldx #lo(NAMEBUF)
+    lda #hi(NAMEBUF)
+    jsr cpush
+    ldx #$64
+    lda #$3b
+    jsr cpush
+    ldx #$68
+    lda #$3b
+    jmp $810e
+
+wait_key:               ; -> A = buttons newly pressed
+    ldx #$01
+    cla
+    ldy #$01
+    jsr $f01a
+    lda $222d
+    beq wait_key
+    rts
+
+hub:                    ; -> A = 0 back to the browser, 1 go to GDIR/GFILE
+    stz HCUR
+hub_redraw:
+    jsr $eda9
+    sei
+    jsr hub_draw
+    lda <$f7
+    sta $0000
+    cli
+hub_loop:
+    jsr wait_key
+    bit #$10
+    bne hub_up
+    bit #$40
+    bne hub_dn
+    bit #$0a
+    bne hub_ok
+    bit #$01
+    bne hub_back
+    bra hub_loop
+hub_up:
+    lda HCUR
+    bne hub_up1
+    lda #$03
+hub_up1:
+    dec a
+    sta HCUR
+    bra hub_upd
+hub_dn:
+    lda HCUR
+    inc a
+    cmp #$03
+    bcc hub_dn1
+    cla
+hub_dn1:
+    sta HCUR
+hub_upd:
+    sei
+    jsr hub_draw
+    lda <$f7
+    sta $0000
+    cli
+    bra hub_loop
+hub_ok:
+    lda HCUR
+    cmp #$02
+    beq hub_about
+    sta LKIND
+    jsr list_screen
+    cmp #$00
+    beq hub_redraw
+    ldx #$03            ; go: the OS's "enter folder" code reads the cluster at $3b96
+hub_go:
+    lda GDIR,x
+    sta $3b96,x
+    dex
+    bpl hub_go
+    lda #$02            ; start from the root with an empty path, so I leads back to it
+    sta CURDIR
+    stz CURDIR+1
+    stz CURDIR+2
+    stz CURDIR+3
+    stz $3d12
+    stz $3d13
+    lda #$01
+    sta GSTATE
+    rts
+hub_about:
+    jsr $8144           ; the OS about screen
+    jmp hub_redraw
+hub_back:
+    jsr $eda9
+    cla
+    rts
+
+hub_draw:
+    lda #30
+    sta CNT
+    lda #lo(s_menu)
+    sta T
+    lda #hi(s_menu)
+    sta T+1
+    ldx #$01
+    ldy #$02
+    lda #$02
+    jsr prt
+    stz ADI
+hd_opt:
+    lda ADI
+    asl a
+    tax
+    lda hub_tab,x
+    sta T
+    lda hub_tab+1,x
+    sta T+1
+    ldx ADI
+    lda hub_row,x
+    tay
+    sty LROW
+    lda ADI
+    cmp HCUR
+    beq hd_sel
+    lda #$01
+    bra hd_put
+hd_sel:
+    cla
+hd_put:
+    ldx #$08
+    jsr prt
+    lda ADI
+    cmp HCUR
+    bne hd_next
+    lda #lo(s_cur)
+    sta T
+    lda #hi(s_cur)
+    sta T+1
+    ldx #$08
+    ldy LROW
+    cla
+    jsr prt
+hd_next:
+    inc ADI
+    lda ADI
+    cmp #$03
+    bne hd_opt
+    lda #lo(s_hint_menu)
+    sta T
+    lda #hi(s_hint_menu)
+    sta T+1
+    ldx #$01
+    ldy #23
+    lda #$01
+    jmp prt
+
+; ---------------------------------------------------------------- favourites / recents list
+list_screen:            ; LKIND -> A = 0 back to the menu, 1 go (GDIR/GFILE set)
+    jsr $eda9
+    sei
+    jsr list_build
+    stz LCUR
+    jsr list_draw
+    lda <$f7
+    sta $0000
+    cli
+ls_loop:
+    jsr wait_key
+    bit #$10
+    bne ls_up
+    bit #$40
+    bne ls_dn
+    bit #$80
+    bne ls_pgup
+    bit #$20
+    bne ls_pgdn
+    bit #$0a
+    bne ls_ok
+    bit #$01
+    bne ls_back
+    bra ls_loop
+ls_up:
+    lda LCUR
+    beq ls_loop
+    dec LCUR
+    bra ls_upd
+ls_dn:
+    lda LCUR
+    inc a
+    cmp LCOUNT
+    bcs ls_loop
+    sta LCUR
+    bra ls_upd
+ls_pgup:
+    lda LCUR
+    sec
+    sbc #PAGE
+    bcs ls_pg1
+    cla
+ls_pg1:
+    sta LCUR
+    bra ls_upd
+ls_pgdn:
+    lda LCOUNT
+    beq ls_loop
+    lda LCUR
+    clc
+    adc #PAGE
+    cmp LCOUNT
+    bcc ls_pg2
+    lda LCOUNT
+    dec a
+ls_pg2:
+    sta LCUR
+ls_upd:
+    sei
+    jsr list_draw
+    lda <$f7
+    sta $0000
+    cli
+    jmp ls_loop
+ls_ok:
+    lda LCOUNT
+    jeq ls_loop
+    sei
+    jsr list_pick
+    lda <$f7
+    sta $0000
+    cli
+    jcs ls_loop
+    lda #$01
+    rts
+ls_back:
+    cla
+    rts
+
+list_kind:              ; SBASE/SCNT/SKIND for LKIND
+    lda LKIND
+    bne lk_rec
+    lda #FAV_BASE
+    sta SBASE
+    lda #FAV_SECTORS
+    sta SCNT
+    lda #$46
+    sta SKIND
+    rts
+lk_rec:
+    lda #REC_BASE
+    sta SBASE
+    lda #REC_SECTORS
+    sta SCNT
+    lda #$52
+    sta SKIND
+    rts
+
+list_build:             ; -> LIST/LCOUNT (recents newest first)
+    stz LCOUNT
+    lda #$ff
+    sta LSEC
+    lda FLAGS
+    and #$02
+    bne lb_go
+    rts
+lb_go:
+    jsr list_kind
+    stz SS
+lb_sec:
+    jsr slot_read
+    bcc lb_ok
+    rts
+lb_ok:
+    stz SE
+lb_ent:
+    jsr ent_addr
+    jsr vram_r
+    lda $0002
+    sta T
+    lda $0003
+    sta T+1
+    lda $0002
+    sta T+2
+    lda $0003
+    ora T
+    ora T+1
+    ora T+2
+    beq lb_next
+    lda $0002           ; seq
+    sta CURSEQ
+    lda $0003
+    sta CURSEQ+1
+    lda SS              ; id = sector * 7 + entry
+    asl a
+    asl a
+    asl a
+    sec
+    sbc SS
+    clc
+    adc SE
+    ldx LCOUNT
+    sta LIST,x
+    txa
+    asl a
+    tax
+    lda CURSEQ
+    sta SEQS,x
+    lda CURSEQ+1
+    sta SEQS+1,x
+    inc LCOUNT
+lb_next:
+    inc SE
+    lda SE
+    cmp #$07
+    bne lb_ent
+    inc SS
+    lda SS
+    cmp SCNT
+    bne lb_sec
+    lda LKIND
+    beq lb_done
+    jsr sort_recent
+lb_done:
+    rts
+
+sort_recent:            ; selection sort, newest (highest seq) first
+    stz R
+sr_i:
+    lda R
+    inc a
+    cmp LCOUNT
+    bcs sr_done
+    lda R
+    sta R2              ; index of the max
+    inc a
+    sta TMP
+sr_j:
+    lda TMP
+    cmp LCOUNT
+    bcs sr_swap
+    asl a
+    tax
+    lda R2
+    asl a
+    tay
+    lda SEQS,y          ; if seq[j] > seq[max]: max = j
+    cmp SEQS,x
+    lda SEQS+1,y
+    sbc SEQS+1,x
+    bcs sr_jn
+    lda TMP
+    sta R2
+sr_jn:
+    inc TMP
+    bra sr_j
+sr_swap:
+    ldx R
+    ldy R2
+    lda LIST,x
+    pha
+    lda LIST,y
+    sta LIST,x
+    pla
+    sta LIST,y
+    txa
+    asl a
+    tax
+    tya
+    asl a
+    tay
+    lda SEQS,x
+    pha
+    lda SEQS,y
+    sta SEQS,x
+    pla
+    sta SEQS,y
+    lda SEQS+1,x
+    pha
+    lda SEQS+1,y
+    sta SEQS+1,x
+    pla
+    sta SEQS+1,y
+    inc R
+    bra sr_i
+sr_done:
+    rts
+
+id_load:                ; A = entry id -> SCR holds its sector (cached), SE = entry. C=1 on error
+    ldx #$00
+il_div:
+    cmp #$07
+    bcc il_d
+    sbc #$07
+    inx
+    bra il_div
+il_d:
+    sta SE
+    stx SS
+    cpx LSEC
+    beq il_ok
+    jsr list_kind
+    jsr slot_read
+    bcs il_bad
+    lda SS
+    sta LSEC
+il_ok:
+    clc
+    rts
+il_bad:
+    lda #$ff
+    sta LSEC
+    sec
+    rts
+
+list_draw:
+    lda #30
+    sta CNT
+    lda LKIND           ; title
+    asl a
+    tax
+    lda title_tab,x
+    sta T
+    lda title_tab+1,x
+    sta T+1
+    ldx #$01
+    ldy #$01
+    lda #$02
+    jsr prt
+    lda #lo(s_hint_list)
+    sta T
+    lda #hi(s_hint_list)
+    sta T+1
+    ldx #$01
+    ldy #23
+    lda #$01
+    jsr prt
+    lda LCOUNT
+    bne ld_items
+    lda FLAGS
+    and #$02
+    bne ld_empty
+    lda #lo(s_nodat)
+    ldx #hi(s_nodat)
+    bra ld_msg
+ld_empty:
+    lda #lo(s_empty)
+    ldx #hi(s_empty)
+ld_msg:
+    sta T
+    stx T+1
+    ldx #$02
+    ldy #$05
+    lda #$01
+    jmp prt
+ld_items:
+    lda LCUR            ; first row of the page = LCUR rounded down to PAGE
+    and #$f0
+    sta LTOP
+    stz LROW
+ld_row:
+    lda LTOP
+    clc
+    adc LROW
+    sta LIDX
+    jsr ld_fill         ; LINE = name or blanks
+    lda #lo(LINE)
+    sta T
+    lda #hi(LINE)
+    sta T+1
+    lda #30
+    sta CNT
+    lda LROW
+    clc
+    adc #$03
+    tay
+    lda LIDX
+    cmp LCUR
+    beq ld_sel
+    lda #$01
+    bra ld_put
+ld_sel:
+    cla
+ld_put:
+    ldx #$01
+    jsr prt
+    inc LROW
+    lda LROW
+    cmp #PAGE
+    bne ld_row
+    rts
+
+ld_fill:                ; LINE[0] = cursor mark, LINE[1..29] = name of LIST[LIDX], LINE[30] = 0
+    ldx #$1d
+    lda #$20
+lf_clr:
+    sta LINE,x
+    dex
+    bpl lf_clr
+    stz LINE+30
+    lda LIDX
+    cmp LCOUNT
+    bcs lf_ret
+    cmp LCUR
+    bne lf_nomark
+    lda #$3e            ; ">"
+    sta LINE
+lf_nomark:
+    ldx LIDX
+    lda LIST,x
+    jsr id_load
+    bcs lf_ret
+    jsr ent_addr        ; name starts at entry byte 10 = word 5
+    txa
+    clc
+    adc #$05
+    tax
+    lda #hi(SCR)
+    jsr vram_r
+    ldx #$01
+lf_cp:
+    lda $0002
+    beq lf_ret
+    sta LINE,x
+    inx
+    cpx #$1e
+    beq lf_ret
+    lda $0003
+    beq lf_ret
+    sta LINE,x
+    inx
+    cpx #$1e
+    bne lf_cp
+lf_ret:
+    rts
+
+list_pick:              ; LIST[LCUR] -> GDIR, GFILE. C=1 on error
+    ldx LCUR
+    lda LIST,x
+    jsr id_load
+    bcs lp_bad
+    jsr ent_addr
+    jsr vram_r
+    lda $0002
+    sta GDIR
+    lda $0003
+    sta GDIR+1
+    lda $0002
+    sta GDIR+2
+    lda $0003
+    sta GDIR+3
+    lda $0002           ; seq
+    lda $0003
+    lda $0002
+    sta GFILE
+    lda $0003
+    sta GFILE+1
+    lda $0002
+    sta GFILE+2
+    lda $0003
+    sta GFILE+3
+    lda GDIR
+    ora GDIR+1
+    ora GDIR+2
+    ora GDIR+3
+    beq lp_bad
+    clc
+    rts
+lp_bad:
+    sec
+    rts
+
+; ---------------------------------------------------------------- go to a game: find it in the folder, then press keys
+goto_tick:              ; called every idle frame; sets INJ
+    lda GSTATE
+    bne gt_on
+    rts
+gt_on:
+    cmp #$01
+    jne gt_keys
+    stz GSTATE
+    ldx #$03            ; did the OS enter the folder?
+gt_dir:
+    lda CURDIR,x
+    cmp GDIR,x
+    jne gt_ret
+    dex
+    bpl gt_dir
+    jsr dir_ordinal     ; ORD = ordinal of GFILE among the folder's entries
+    jcs gt_ret
+    lda ORD+1
+    jne gt_ret          ; the OS lists at most 224 entries
+    clx
+gt_find:
+    lda TBL,x
+    cmp ORD
+    bne gt_nx
+    phx                 ; confirm with the OS: open(i) must give the same file
+    cla
+    jsr os_open
+    plx
+    lda $3b64
+    cmp GFILE
+    bne gt_nx
+    lda $3b65
+    cmp GFILE+1
+    bne gt_nx
+    lda $3b66
+    cmp GFILE+2
+    bne gt_nx
+    lda $3b67
+    cmp GFILE+3
+    beq gt_found
+gt_nx:
+    inx
+    cpx #224
+    bne gt_find
+    rts
+gt_found:
+    txa                 ; RIGHT x (i / 20), DOWN x (i % 20), then RUN
+    ldy #$00
+gt_div:
+    cmp #20
+    bcc gt_d
+    sbc #20
+    iny
+    bra gt_div
+gt_d:
+    sty GRIGHT
+    sta GDOWN
+    lda #$02
+    sta GSTATE
+gt_keys:
+    lda GRIGHT
+    beq gt_down
+    dec GRIGHT
+    lda #$20
+    sta INJ
+    rts
+gt_down:
+    lda GDOWN
+    beq gt_run
+    dec GDOWN
+    lda #$40
+    sta INJ
+    rts
+gt_run:
+    stz GSTATE
+    lda #$08
+    sta INJ
+gt_ret:
+    rts
+
+dir_ordinal:            ; scan CURDIR for GFILE, counting entries the way the OS numbers them
+    stz ORD
+    stz ORD+1
+    ldx #$03
+do_c0:
+    lda CURDIR,x
+    sta DCL,x
+    dex
+    bpl do_c0
+    lda #64             ; at most 64 clusters
+    sta CNT2
+do_clus:
+    ldx #$03
+do_c1:
+    lda DCL,x
+    sta T,x
+    dex
+    bpl do_c1
+    jsr clus2lba        ; LBA = first sector, TMP = sectors per cluster
+    lda FS_BPC+1
+    sta R
+    lda FS_BPC+2
+    lsr a
+    ror R
+do_sec:
+    jsr read_scr
+    jcs do_fail
+    ldx #lo(SCR)
+    lda #hi(SCR)
+    jsr vram_r
+    lda #$10
+    sta R2
+do_ent:
+    ldx #$00            ; entry -> LINE[0..31]
+do_rd:
+    lda $0002
+    sta LINE,x
+    inx
+    lda $0003
+    sta LINE,x
+    inx
+    cpx #$20
+    bne do_rd
+    lda LINE
+    jeq do_fail         ; end of directory
+    cmp #$e5            ; deleted
+    beq do_next
+    cmp #$2e            ; . and ..
+    beq do_next
+    lda LINE+11
+    cmp #$0f            ; long-name part
+    beq do_next
+    and #$08            ; volume label
+    bne do_next
+    lda LINE+26
+    cmp GFILE
+    bne do_cnt
+    lda LINE+27
+    cmp GFILE+1
+    bne do_cnt
+    lda LINE+20
+    cmp GFILE+2
+    bne do_cnt
+    lda LINE+21
+    cmp GFILE+3
+    bne do_cnt
+    clc
+    rts
+do_cnt:
+    inc ORD
+    bne do_next
+    inc ORD+1
+do_next:
+    dec R2
+    bne do_ent
+    jsr lba_inc
+    dec R
+    bne do_sec
+    jsr fat_next        ; next cluster of the directory
+    jcs do_fail
+    dec CNT2
+    jne do_clus
+do_fail:
+    sec
+    rts
+
+fat_next:               ; DCL = FAT[DCL]. C=1 at the end of the chain
+    lda DCL             ; LBA = FS_FAT + DCL / 128
+    asl a
+    lda DCL+1
+    rol a
+    sta T
+    lda DCL+2
+    rol a
+    sta T+1
+    lda DCL+3
+    rol a
+    sta T+2
+    clc
+    lda T
+    adc FS_FAT
+    sta LBA
+    lda T+1
+    adc FS_FAT+1
+    sta LBA+1
+    lda T+2
+    adc FS_FAT+2
+    sta LBA+2
+    lda #$00
+    adc FS_FAT+3
+    sta LBA+3
+    jsr read_scr
+    bcs fn_end
+    lda DCL             ; word offset = (DCL & 127) * 2
+    and #$7f
+    asl a
+    tax
+    lda #hi(SCR)
+    jsr vram_r
+    lda $0002
+    sta DCL
+    lda $0003
+    sta DCL+1
+    lda $0002
+    sta DCL+2
+    lda $0003
+    and #$0f
+    sta DCL+3
+    cmp #$0f            ; end-of-chain markers (and anything absurd)
+    beq fn_end
+    lda DCL+3
+    ora DCL+2
+    ora DCL+1
+    bne fn_ok
+    lda DCL
+    cmp #$02
+    bcc fn_end
+fn_ok:
+    clc
+    rts
+fn_end:
+    sec
+    rts
+"""
+
+BANK13 = THEME + GFX + SDART + ACTION + HUB
 # RGPOA.DAT v2 layout (sectors relative to the file start)
 FAV_BASE, FAV_SECTORS = 1, 8
 REC_BASE, REC_SECTORS = 9, 2
 INDEX_BASE = 11
 CONSTS = {'ROOT_SECTORS': 16, 'ART_DELAY': 12, 'ART_SPR_SECTORS': 12,
           'FAV_BASE': FAV_BASE, 'FAV_SECTORS': FAV_SECTORS, 'REC_BASE': REC_BASE,
-          'REC_SECTORS': REC_SECTORS, 'INDEX_BASE': INDEX_BASE, 'WRITABLE': INDEX_BASE, 'NAMELEN': 56}
+          'REC_SECTORS': REC_SECTORS, 'INDEX_BASE': INDEX_BASE, 'WRITABLE': INDEX_BASE, 'NAMELEN': 52}

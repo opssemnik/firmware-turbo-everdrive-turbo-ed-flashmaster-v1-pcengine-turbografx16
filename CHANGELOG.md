@@ -1,5 +1,10 @@
 # Histórico
 
+## PT-BR v8
+- **Menu** no botão I da raiz: Favoritos, Recentes e Sobre.
+- **Listas de favoritos e recentes** (recentes do mais novo para o mais antigo). Escolher um jogo faz o OS entrar na pasta dele, leva o cursor até o jogo e abre a tela do jogo.
+- Favoritos e recentes guardam também o cluster do arquivo; `RGPOA.DAT` passa para o formato v3 (é preciso trocar o arquivo).
+
 ## PT-BR v7
 - **Tela do jogo** ao apertar RUN num arquivo: nome, capa e as opções Carregar, Favoritar / Remover favorito e Voltar.
 - Favoritos (até 56) e recentes (últimos 14 jogos carregados) salvos no `RGPOA.DAT`.

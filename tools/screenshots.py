@@ -62,8 +62,18 @@ def main():
     os.remove(os.path.join(OUT, '_theme.png'))
 
     a = Machine.restore(root)
-    a.press('I', 3, 40)
+    a.press('I', 3, 60)
+    shot(a, 'menu_principal')
+    a.press('DOWN', 2, 10); a.press('DOWN', 2, 10); a.pad = 8; a.run_frames(40); a.pad = 0
     shot(a, 'sobre')
+
+    f = Machine.restore(folder)        # two favourites, then menu > Favoritos
+    for downs in (0, 4):
+        for k in ['DOWN'] * downs: f.press(k, 2, 4)
+        f.press('RUN', 3, 60); f.press('DOWN', 2, 10); f.press('RUN', 3, 60); f.press('I', 3, 90)
+    f.press('I', 3, 120)
+    f.press('I', 3, 60); f.press('RUN', 3, 90)
+    shot(f, 'favoritos')
 
     g = Machine.restore(folder)
     g.press('RUN', 3, 60)          # action screen, "Carregar" selected
