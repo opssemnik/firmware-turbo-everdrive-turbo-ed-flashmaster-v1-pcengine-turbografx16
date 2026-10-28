@@ -1,0 +1,203 @@
+{
+  "sha": "3be96b504b32eecd94e2c3c0d7fcd6dfc8eaf9c3",
+  "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/trees/3be96b504b32eecd94e2c3c0d7fcd6dfc8eaf9c3",
+  "tree": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e437ad240465c9b68c055d89f936157e1d20f4cd",
+      "size": 7,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/e437ad240465c9b68c055d89f936157e1d20f4cd"
+    },
+    {
+      "path": "Named_Boxarts",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "944a75d399c7ce1abae6ae778f2576325d252df1",
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/trees/944a75d399c7ce1abae6ae778f2576325d252df1"
+    },
+    {
+      "path": "Named_Boxarts/1941 - Counter Attack (Japan).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9286761342235dfd2bb0c44d98bbf5e348e8c635",
+      "size": 180823,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/9286761342235dfd2bb0c44d98bbf5e348e8c635"
+    },
+    {
+      "path": "Named_Boxarts/Aldynes - The Misson Code for Rage Crisis (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41d0a2b3006ef496e36d437b72f5b4c1e0ac7350",
+      "size": 122572,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/41d0a2b3006ef496e36d437b72f5b4c1e0ac7350"
+    },
+    {
+      "path": "Named_Boxarts/Battle Ace (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "90f26a81b7bfa90942a55a95c7785b1f4fbe284d",
+      "size": 144355,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/90f26a81b7bfa90942a55a95c7785b1f4fbe284d"
+    },
+    {
+      "path": "Named_Boxarts/Daimakaimura (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e343d23a3eb2bf71489420d2974fc686323c4e12",
+      "size": 200656,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/e343d23a3eb2bf71489420d2974fc686323c4e12"
+    },
+    {
+      "path": "Named_Boxarts/Madou King Granzort (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11ae16a3be119751e60957456c95a897039cf5f2",
+      "size": 259440,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/11ae16a3be119751e60957456c95a897039cf5f2"
+    },
+    {
+      "path": "Named_Logos",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "26d25d01d74eeb2662fa7c1bbf7c00d0c1ead723",
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/trees/26d25d01d74eeb2662fa7c1bbf7c00d0c1ead723"
+    },
+    {
+      "path": "Named_Logos/1941 - Counter Attack (Japan).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "909a02fcf918be6bfc418500e5ea1d80b4ccad72",
+      "size": 4399,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/909a02fcf918be6bfc418500e5ea1d80b4ccad72"
+    },
+    {
+      "path": "Named_Logos/Aldynes - The Misson Code for Rage Crisis (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47f094e22b838418aa614dbb65c644a5ebfb56ed",
+      "size": 4221,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/47f094e22b838418aa614dbb65c644a5ebfb56ed"
+    },
+    {
+      "path": "Named_Logos/Battle Ace (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8d2757d2aeb5e6241fcd4052353e0b84e322ce75",
+      "size": 5666,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/8d2757d2aeb5e6241fcd4052353e0b84e322ce75"
+    },
+    {
+      "path": "Named_Logos/Daimakaimura (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d1e302dbe55078ac20ac8423f78bac75ce58381",
+      "size": 56535,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/5d1e302dbe55078ac20ac8423f78bac75ce58381"
+    },
+    {
+      "path": "Named_Logos/Madou King Granzort (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea6860856cc3d033f01208c444d178cc1f90b5ed",
+      "size": 7613,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/ea6860856cc3d033f01208c444d178cc1f90b5ed"
+    },
+    {
+      "path": "Named_Snaps",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ce61a14b79f1f59c1e8294ae702954c231a6c88c",
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/trees/ce61a14b79f1f59c1e8294ae702954c231a6c88c"
+    },
+    {
+      "path": "Named_Snaps/1941 - Counter Attack (Japan).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3bc1ad05abac6386fc41e297c0bd52884e07630d",
+      "size": 11160,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/3bc1ad05abac6386fc41e297c0bd52884e07630d"
+    },
+    {
+      "path": "Named_Snaps/Aldynes - The Misson Code for Rage Crisis (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "363332e23b13fb1495df6e6f994ec162ad3f5e7e",
+      "size": 7079,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/363332e23b13fb1495df6e6f994ec162ad3f5e7e"
+    },
+    {
+      "path": "Named_Snaps/Battle Ace (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "747c186b63dcf4e8ddecf5b25511e200ad2f6a8b",
+      "size": 5902,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/747c186b63dcf4e8ddecf5b25511e200ad2f6a8b"
+    },
+    {
+      "path": "Named_Snaps/Daimakaimura (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e797fc2146359ca455cac0455f0cf2be46742dc0",
+      "size": 7526,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/e797fc2146359ca455cac0455f0cf2be46742dc0"
+    },
+    {
+      "path": "Named_Snaps/Madou King Granzort (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "854d5582299e9d239ff634708114bdaf773713b4",
+      "size": 9662,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/854d5582299e9d239ff634708114bdaf773713b4"
+    },
+    {
+      "path": "Named_Titles",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6dbc8b2b27a679c6a5534cb04f4d350a11a45dd4",
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/trees/6dbc8b2b27a679c6a5534cb04f4d350a11a45dd4"
+    },
+    {
+      "path": "Named_Titles/1941 - Counter Attack (Japan).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af6e983e4ba4baa027c33ed440293952fdd87f65",
+      "size": 12447,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/af6e983e4ba4baa027c33ed440293952fdd87f65"
+    },
+    {
+      "path": "Named_Titles/Aldynes - The Misson Code for Rage Crisis (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ae9cd01d40bfe48ae310a116df0621c6248808d",
+      "size": 4849,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/9ae9cd01d40bfe48ae310a116df0621c6248808d"
+    },
+    {
+      "path": "Named_Titles/Battle Ace (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b281fb537b8a75fd8c26e36d6b18983c17d09b7",
+      "size": 8849,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/6b281fb537b8a75fd8c26e36d6b18983c17d09b7"
+    },
+    {
+      "path": "Named_Titles/Daimakaimura (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "491cdbca4ee67deed311ef16017682bfd3fe5c4a",
+      "size": 5165,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/491cdbca4ee67deed311ef16017682bfd3fe5c4a"
+    },
+    {
+      "path": "Named_Titles/Madou King Granzort (Japan) (En).png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8339d480ed9c1cc1776783d5ae653e9c243aef60",
+      "size": 7058,
+      "url": "https://api.github.com/repos/libretro-thumbnails/NEC_-_PC_Engine_SuperGrafx/git/blobs/8339d480ed9c1cc1776783d5ae653e9c243aef60"
+    }
+  ],
+  "truncated": false
+}

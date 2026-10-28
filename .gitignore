@@ -1,0 +1,8 @@
+sdcard/
+GAMES_PCENGINE/
+sdcard_dump
+*.img
+stock/
+out/
+__pycache__/
+*.snap
