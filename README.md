@@ -1,6 +1,8 @@
-# Turbo EverDrive OS — Retrogamer POA (PT-BR)
+# Firmware para EverDrive / Turbo EverDrive / Turbo ED / FlashMaster / Turbo FlashMaster (v1) — Retrogamer POA (PT-BR)
 
-Mod do sistema operacional (OS) do **Turbo EverDrive v1** da Krikzz para PC Engine / TurboGrafx-16.
+Firmware (OS) para **EverDrive / Turbo EverDrive / Turbo ED / FlashMaster / Turbo FlashMaster**, clones e originais (**modelos v1**), de PC Engine / TurboGrafx-16. É um mod do OS do **Turbo EverDrive v1** da Krikzz.
+
+Site: https://pcengine.antonioscartezzini.com.br/
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
 **Versão atual: PT-BR v17** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
