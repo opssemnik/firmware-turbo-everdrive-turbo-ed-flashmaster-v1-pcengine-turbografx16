@@ -7,6 +7,10 @@ Layout v3 (512-byte sectors, offsets relative to the file start):
   sector 0      header: magic[16] "RGPOA-DAT-v3", theme(1), nbuckets(1), version(1)
   1..8          favourites, 9..10 recents: "RGPOA-SLOT" kind('F'/'R') rel_sector 0 0 0 0,
                 then 7 entries x 64 bytes: dir cluster u32 (0 = empty), seq u16, file cluster u32, name[54]
+  header byte 19 = number of themes, bytes 20-23 = sector of the theme table (0 = built-in themes)
+  theme table   32 bytes per theme: 9 colours (u16, VCE format, slot order of build.SLOTS),
+                banner sector u32 (0 = default banner), name[10]
+  banner        5 sectors: palette (16 x u16), then 64 tiles (2 rows x 32, 4bpp, VRAM order)
   11..10+nb     index buckets: 64 entries x 8 bytes (hashA u16, hashB u16, art sector u32); sector 0 = end
   art blocks    13 sectors each: [magic "RGA1", hashA, hashB, palette 16 x u16] + 6144 bytes of sprites
 The cart identifies the selected game by hashing the name shown in the browser's bottom bar.
@@ -40,6 +44,54 @@ def name_hash(fname):
 def vce(rgb):
     r, g, b = rgb
     return (g << 6) | (r << 3) | b
+
+
+THEMES_JSON = os.path.join(ROOT, 'themes', 'themes.json')
+BANNERS = os.path.join(ROOT, 'themes', 'banners')
+
+
+def banner_block(path):
+    """256x16 PNG -> 5 sectors: palette sector + 64 tiles (sequential, palette indices 1-15)."""
+    from PIL import Image
+    import art
+    im = Image.open(path).convert('RGB')
+    if im.size != (256, 16): raise SystemExit('%s: banner must be 256x16' % path)
+    q = lambda v: min(7, (v * 7 + 127) // 255)
+    px = im.load()
+    cols, idx = [], [[0] * 256 for _ in range(16)]
+    for y in range(16):
+        for x in range(256):
+            c = tuple(q(v) for v in px[x, y])
+            if c not in cols:
+                cols.append(c)
+                if len(cols) > 15: raise SystemExit('%s: more than 15 colours' % path)
+            idx[y][x] = cols.index(c) + 1
+    pal = bytearray(512)
+    for i, c in enumerate([cols[0]] + cols):
+        struct.pack_into('<H', pal, i * 2, vce(c))
+    tiles = b''
+    for ty in range(2):
+        for tx in range(32):
+            tiles += art.tile_bytes([idx[ty * 8 + y][tx * 8:tx * 8 + 8] for y in range(8)])
+    return bytes(pal) + tiles
+
+
+def theme_section(first_sector):
+    """-> (bytes, count) for themes/themes.json, placed at first_sector."""
+    if not os.path.exists(THEMES_JSON): return b'', 0
+    themes = json.load(open(THEMES_JSON, encoding='utf-8'))['themes'][:32]
+    ntab = -(-len(themes) * 32 // 512)
+    table = bytearray(ntab * 512)
+    blocks = b''
+    for i, t in enumerate(themes):
+        c = [t['backdrop'], t['cursor'], t['fundo'], t['arquivo'], t['fundo'], t['pasta'], t['fundo'],
+             t['barra_texto'], t['barra_fundo']]
+        for k, rgb in enumerate(c): struct.pack_into('<H', table, i * 32 + k * 2, vce(rgb))
+        if t.get('banner'):
+            struct.pack_into('<I', table, i * 32 + 18, first_sector + ntab + len(blocks) // 512)
+            blocks += banner_block(os.path.join(BANNERS, t['banner']))
+        table[i * 32 + 22:i * 32 + 32] = t['name'].encode('latin-1', 'replace')[:10].ljust(10, b'\0')
+    return bytes(table) + blocks, len(themes)
 
 
 def slot_sector(kind, rel):
@@ -101,6 +153,14 @@ def build(sd, out, theme=0, keep=None):
         hdr[:4] = ART_MAGIC
         for i, c in enumerate(colors): struct.pack_into('<H', hdr, 8 + i * 2, vce(c))
         data += hdr + artconv.sprite_cells(idx)
+    tsec = len(data) // 512
+    tdata, tcount = theme_section(tsec)
+    if tcount:
+        data += tdata
+        data[19] = tcount
+        struct.pack_into('<I', data, 20, tsec)
+        if theme >= tcount: data[16] = 0
+        print('themes: %d (%d banners)' % (tcount, (len(tdata) // 512 - (-(-tcount * 32 // 512))) // 5))
     open(out, 'wb').write(data)
     print('%s: %d games, %d images, %d index sectors, %.1f MB'
           % (out, len(entries), len(order), nb, len(data) / 1e6))

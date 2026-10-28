@@ -54,6 +54,8 @@ theme_set:              ; X = theme index: remember it and load its colours
     stx VCE_D
     lda #$01
     sta VCE_DH
+    lda TCOUNT
+    jne theme_dat
     phx
     lda offs,x
     tax
@@ -95,7 +97,9 @@ theme_next:             ; SELECT pressed in the browser
     sei
     jsr theme_cur
     inx
-    cpx #NTHEMES
+    jsr theme_count
+    sta TMP
+    cpx TMP
     bcc tn_ok
     clx
 tn_ok:
@@ -126,18 +130,9 @@ banner_draw:            ; cls() hook: palette 4 + tiles at VRAM $1000 + BAT rows
     st2 #$10
     st0 #$02
     tia B15_BANTILES,$0002,BAN_TILES_LEN
-    st0 #$00
-    st1 #$80
-    st2 #$07
-    st0 #$02
-    tia B15_BANMAP,$0002,64
-    st0 #$00
-    st1 #$c0
-    st2 #$07
-    st0 #$02
-    tia B15_BANMAP+64,$0002,64
     pla
     tam #$08
+    jsr banner_rows
     jsr panel_hide
     lda #$ff            ; forget the selection so the art reloads after the redraw
     sta SEL
@@ -616,9 +611,22 @@ di_found:
     lda $0003
     dec a
     sta NBMASK
+    lda $0002           ; word 9: version, theme count
+    lda $0003
+    sta TCOUNT
+    lda $0002           ; words 10-11: theme table sector
+    sta TTAB
+    lda $0003
+    sta TTAB+1
+    lda $0002
+    sta TTAB+2
+    lda $0003
+    sta TTAB+3
     jsr theme_cur       ; saves the stock bar colour on first use
+    jsr theme_count
+    sta TMP
     ldx R2
-    cpx #NTHEMES
+    cpx TMP
     bcs di_done
     jsr theme_set
 di_done:
@@ -2741,7 +2749,156 @@ fn_end:
     rts
 """
 
-BANK13 = THEME + GFX + SDART + ACTION + HUB
+THEMES_DAT = """
+; ---------------------------------------------------------------- themes and banners from RGPOA.DAT
+TCOUNT = $20e4          ; themes in RGPOA.DAT (0 = built-in)
+TTAB = $20e5            ; theme table sector (relative, 4 bytes)
+BANCUST = $20e9         ; 1 = the active theme has its own banner (tiles $140+, palette 6)
+
+theme_count:            ; -> A = number of themes
+    lda TCOUNT
+    bne tcn_r
+    lda #NTHEMES
+tcn_r:
+    rts
+
+theme_dat:              ; X = theme: 9 colours from the table, then the optional banner
+    txa                 ; sector = TTAB + X / 16
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    clc
+    adc TTAB
+    sta T
+    lda TTAB+1
+    adc #$00
+    sta T+1
+    lda TTAB+2
+    adc #$00
+    sta T+2
+    lda TTAB+3
+    adc #$00
+    sta T+3
+    phx
+    jsr lba_from_dat
+    jsr read_scr
+    plx
+    jcs td_ret
+    txa                 ; entry = (X % 16) * 16 words
+    and #$0f
+    asl a
+    asl a
+    asl a
+    asl a
+    tax
+    lda #hi(SCR)
+    jsr vram_r
+    cly
+td_col:
+    lda slots,y
+    sta VCE_A
+    stz VCE_AH
+    lda $0002
+    sta VCE_D
+    lda $0003
+    sta VCE_DH
+    iny
+    cpy #NSLOTS
+    bne td_col
+    lda $0002           ; banner sector
+    sta T
+    lda $0003
+    sta T+1
+    lda $0002
+    sta T+2
+    lda $0003
+    sta T+3
+    stz BANCUST
+    ora T
+    ora T+1
+    ora T+2
+    beq td_rows
+    jsr lba_from_dat    ; palette sector -> CRAM $60 (palette 6)
+    jsr read_scr
+    bcs td_rows
+    ldx #lo(SCR)
+    lda #hi(SCR)
+    jsr vram_r
+    lda #$60
+    sta VCE_A
+    stz VCE_AH
+    ldx #$10
+td_pal:
+    lda $0002
+    sta VCE_D
+    lda $0003
+    sta VCE_DH
+    dex
+    bne td_pal
+    jsr lba_inc         ; 64 tiles -> VRAM $1400
+    ldx #$00
+    lda #$14
+    jsr vram_w
+    ldx #$04
+    jsr read_blocks
+    bcs td_rows
+    inc BANCUST
+td_rows:
+    jmp banner_rows
+td_ret:
+    rts
+
+banner_rows:            ; BAT rows 30-31 (the top of the screen): custom or default banner
+    st0 #$00
+    st1 #$80
+    st2 #$07
+    st0 #$02
+    lda BANCUST
+    beq br_def
+    clx
+br_r1:
+    txa
+    clc
+    adc #$40
+    sta $0002
+    lda #$61            ; palette 6, tile $140 + i
+    sta $0003
+    inx
+    cpx #32
+    bne br_r1
+    st0 #$00
+    st1 #$c0
+    st2 #$07
+    st0 #$02
+br_r2:
+    txa
+    clc
+    adc #$40
+    sta $0002
+    lda #$61
+    sta $0003
+    inx
+    cpx #64
+    bne br_r2
+    rts
+br_def:
+    tma #$08
+    pha
+    lda #$0f
+    tam #$08
+    tia B15_BANMAP,$0002,64
+    st0 #$00
+    st1 #$c0
+    st2 #$07
+    st0 #$02
+    tia B15_BANMAP+64,$0002,64
+    pla
+    tam #$08
+    rts
+"""
+
+BANK13 = THEME + GFX + SDART + ACTION + HUB + THEMES_DAT
 # RGPOA.DAT v2 layout (sectors relative to the file start)
 FAV_BASE, FAV_SECTORS = 1, 8
 REC_BASE, REC_SECTORS = 9, 2

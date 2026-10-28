@@ -51,13 +51,16 @@ def main():
 
     tiles = []
     t = Machine.restore(folder)
-    for i in range(len(THEMES)):
+    n = t.ram[0xe4] or len(THEMES)      # themes from RGPOA.DAT, or the built-in ones
+    for i in range(n):
         t.render(os.path.join(OUT, '_theme.png'))
         tiles.append(Image.open(os.path.join(OUT, '_theme.png')).resize((256, 224)).copy())
         t.press('SEL', 3, 20)
-    grid = Image.new('RGB', (4 * 256 + 3 * 8, 2 * 224 + 8), (24, 24, 24))
+    cols = 5
+    rows = -(-len(tiles) // cols)
+    grid = Image.new('RGB', (cols * 264 - 8, rows * 232 - 8), (24, 24, 24))
     for i, im in enumerate(tiles):
-        grid.paste(im, ((i % 4) * 264, (i // 4) * 232))
+        grid.paste(im, ((i % cols) * 264, (i // cols) * 232))
     grid.save(os.path.join(DOCS, 'temas.png'))
     os.remove(os.path.join(OUT, '_theme.png'))
 
@@ -81,6 +84,12 @@ def main():
     for f in range(60):
         g.run_frames(2)
         if 'Carreg' in g.text(rows=28): shot(g, 'carregando'); break
+    bdir = os.path.join(ROOT, 'themes', 'banners')
+    names = sorted(f for f in os.listdir(bdir) if f.endswith('.png'))
+    gal = Image.new('RGB', (768, len(names) * 54), (40, 40, 40))
+    for i, f in enumerate(names):
+        gal.paste(Image.open(os.path.join(bdir, f)).convert('RGB').resize((768, 48), Image.NEAREST), (0, i * 54))
+    gal.save(os.path.join(DOCS, 'banners.png'))
     print('screenshots in', DOCS)
 
 

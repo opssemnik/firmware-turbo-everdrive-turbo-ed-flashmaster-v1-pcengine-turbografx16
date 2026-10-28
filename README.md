@@ -3,7 +3,7 @@
 Mod do sistema operacional (OS) do **Turbo EverDrive v1** da Krikzz para PC Engine / TurboGrafx-16.
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v9** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v10** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -21,9 +21,20 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 
 **Pular para uma letra:** segure SELECT e aperte → (ou ↓) para ir à próxima letra, ← (ou ↑) para a anterior.
 
-**8 temas de cor com SELECT** (toque e solte): Original, Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo e Papel.
+**Temas com SELECT** (toque e solte), salvos no cartão SD. Cada tema tem suas cores e pode ter **banner próprio**. A release traz 10: Original, Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo, Papel, **Retrochimp Games** (grupo do Arnaldo) e **Maddrugamers** (canal no YouTube).
 
 ![Temas](docs/screenshots/temas.png)
+
+![Banners](docs/screenshots/banners.png)
+
+### Criar seus temas e banners
+Os temas ficam no `RGPOA.DAT`, então dá para criar, editar ou remover sem regravar o firmware:
+
+1. Edite `themes/themes.json`. Cada tema tem um nome, as cores em `[R, G, B]` (0 a 7) e, opcionalmente, `"banner": "arquivo.png"`. A ordem no arquivo é a ordem no SELECT (máximo 32 temas).
+2. Banners: PNG de **256×16 pixels** com até **15 cores**, em `themes/banners/`. As cores são convertidas para a paleta do PC Engine (8 níveis por canal). Os exemplos são gerados por `python tools/theme_art.py`.
+3. Gere o `.dat` (`python tools/artpack.py --keep <RGPOA.DAT do SD>` mantém tema, favoritos e recentes) e copie para a raiz do SD.
+
+Sem `RGPOA.DAT` (ou com um `.dat` sem temas), o firmware usa os 8 temas de fábrica com o banner padrão.
 
 Ao ligar aparece uma **splash screen** por 1,5 segundo. Qualquer botão pula.
 
@@ -94,6 +105,7 @@ python tools/test_v3.py      # capas + salvamento do tema (precisa de uma imagem
 python tools/test_v7.py      # tela do jogo, favoritos e recentes
 python tools/test_v8.py      # menu, listas e "ir ao jogo"
 python tools/test_v9.py      # II num jogo, SELECT (tema / pular letra), splash
+python tools/test_v10.py     # temas e banners do RGPOA.DAT
 python tools/screenshots.py  # gera docs/screenshots/
 ```
 

@@ -9,7 +9,7 @@ from asm import assemble
 import art
 import cart_asm
 
-MOD_VERSION = 9
+MOD_VERSION = 10
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

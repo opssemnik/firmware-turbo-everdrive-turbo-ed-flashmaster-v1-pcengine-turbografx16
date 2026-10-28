@@ -1,5 +1,10 @@
 # Histórico
 
+## PT-BR v10
+- **Temas e banners no `RGPOA.DAT`**: cada tema tem cores e, opcionalmente, um banner próprio (PNG 256×16, até 15 cores). Dá para criar e editar temas sem regravar o firmware (`themes/themes.json`).
+- 10 temas na release, todos com banner próprio exceto o Original. Inclui **Retrochimp Games** (grupo do Arnaldo) e **Maddrugamers**.
+- Compatível com o `RGPOA.DAT` da v8/v9 (sem temas, valem os 8 de fábrica) e vice-versa.
+
 ## PT-BR v9
 - **II num jogo** abre a tela do jogo (antes só o RUN abria).
 - **Pular para uma letra:** SELECT + →/↓ (próxima) e SELECT + ←/↑ (anterior).

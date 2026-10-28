@@ -6,3 +6,5 @@ stock/
 out/
 __pycache__/
 *.snap
+arnaldo*.png
+arnaldo*.jpg

@@ -135,6 +135,13 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
   3. O cursor chega lá pela mesma rotina de busca usada pelos favoritos, que a cada frame compara a página e o índice atuais (local `sp+$10` dentro da chamada do `joy`) com o alvo e injeta ←/→/↑/↓.
 - Dados do banner, ícones, linha de ajuda e paletas ficam no banco 15 (`$1000+`), lidos via MPR3 (`$7000+`).
 
+### Temas e banners do `RGPOA.DAT`
+- Cabeçalho: byte 19 = número de temas, bytes 20–23 = setor da tabela (relativo ao início do arquivo). O firmware anterior ignora esses bytes.
+- Tabela: 32 bytes por tema = 9 cores (u16, ordem de `SLOTS`), setor do banner (u32, 0 = banner padrão) e nome (10 bytes).
+- Banner: 5 setores, com a paleta (16 cores, vai para a paleta 6, CRAM `$60`) e 64 tiles em sequência, enviados para a VRAM `$1400` (tiles `$140-$17F`). O mapa não precisa ser guardado: a linha 30 do BAT recebe `$6140+i` e a linha 31 `$6160+i`.
+- Os ícones da linha de ajuda continuam na paleta 4 e nos tiles `$100+`, que o banner customizado não toca.
+- `theme_set`: se o `.dat` tem temas, lê as cores e o banner do cartão (até 6 setores) e redesenha as linhas do banner. A cada `cls()`, `banner_rows` escreve o banner ativo.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.

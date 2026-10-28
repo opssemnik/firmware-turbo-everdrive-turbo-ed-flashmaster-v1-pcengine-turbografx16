@@ -1,0 +1,15 @@
+{
+  "_ajuda": "Cores em [R, G, B] de 0 a 7 (512 cores do PC Engine). banner = PNG 256x16 em themes/banners (opcional, até 15 cores). Ordem = ordem no SELECT. Máximo 32 temas.",
+  "themes": [
+    {"name": "Original",          "backdrop": [0,0,1], "fundo": [0,0,0], "cursor": [7,7,7], "arquivo": [4,4,4], "pasta": [6,6,0], "barra_texto": [7,7,7], "barra_fundo": [3,3,3]},
+    {"name": "Fosforo Verde",     "backdrop": [0,1,0], "fundo": [0,1,0], "cursor": [5,7,5], "arquivo": [1,5,1], "pasta": [3,7,2], "barra_texto": [0,1,0], "barra_fundo": [2,6,2], "banner": "fosforo_verde.png"},
+    {"name": "Ambar",             "backdrop": [1,0,0], "fundo": [1,0,0], "cursor": [7,7,3], "arquivo": [6,3,0], "pasta": [7,5,1], "barra_texto": [1,0,0], "barra_fundo": [6,4,0], "banner": "ambar.png"},
+    {"name": "Azul",              "backdrop": [0,0,2], "fundo": [0,0,2], "cursor": [7,7,7], "arquivo": [4,5,7], "pasta": [7,7,2], "barra_texto": [7,7,7], "barra_fundo": [1,2,5], "banner": "azul.png"},
+    {"name": "Brasil",            "backdrop": [0,2,0], "fundo": [0,2,0], "cursor": [7,7,7], "arquivo": [7,6,0], "pasta": [5,6,7], "barra_texto": [7,7,7], "barra_fundo": [0,0,4], "banner": "brasil.png"},
+    {"name": "Synthwave",         "backdrop": [1,0,2], "fundo": [1,0,2], "cursor": [7,7,7], "arquivo": [6,3,7], "pasta": [2,7,7], "barra_texto": [7,7,7], "barra_fundo": [5,0,5], "banner": "synthwave.png"},
+    {"name": "Turbo",             "backdrop": [0,0,0], "fundo": [0,0,0], "cursor": [7,7,7], "arquivo": [5,5,5], "pasta": [7,4,0], "barra_texto": [7,7,7], "barra_fundo": [6,2,0], "banner": "turbo.png"},
+    {"name": "Papel",             "backdrop": [6,6,6], "fundo": [6,6,6], "cursor": [0,0,6], "arquivo": [2,2,2], "pasta": [5,2,0], "barra_texto": [7,7,7], "barra_fundo": [1,1,4], "banner": "papel.png"},
+    {"name": "Retrochimp Games",  "backdrop": [0,0,1], "fundo": [0,0,1], "cursor": [7,7,6], "arquivo": [5,5,4], "pasta": [7,4,1], "barra_texto": [7,7,6], "barra_fundo": [0,3,4], "banner": "retrochimp.png"},
+    {"name": "Maddrugamers",      "backdrop": [0,0,0], "fundo": [0,0,0], "cursor": [7,7,7], "arquivo": [2,6,2], "pasta": [4,7,1], "barra_texto": [0,0,0], "barra_fundo": [2,6,1], "banner": "maddrugamers.png"}
+  ]
+}
