@@ -3,7 +3,7 @@
 Mod do sistema operacional (OS) do **Turbo EverDrive v1** da Krikzz para PC Engine / TurboGrafx-16.
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v10** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v11** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -14,12 +14,12 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 | ![Menu](docs/screenshots/menu.png) | **Interface em português** com acentos de verdade: a fonte ganhou á à â ã é ê í ó ô õ ú ç, maiúsculas, ü º ª. **Banner Retrogamer POA** no topo e **linha de ajuda** com os botões. |
 | ![Capa](docs/screenshots/capa.png) | **Capa do jogo** ao parar o cursor sobre ele. São 2.372 nomes de arquivo com capa, entre PC Engine e SuperGrafx, incluindo hacks, traduções e "Sounds". |
 | ![Ações](docs/screenshots/acoes.png) | **Tela do jogo** ao apertar RUN: capa, **Carregar**, **Favoritar / Remover favorito** e **Voltar**. Os jogos carregados entram na lista de **recentes**. |
-| ![Menu](docs/screenshots/menu_principal.png) | **Menu** (botão I na raiz): **Favoritos**, **Recentes** e **Sobre**. |
+| ![Menu](docs/screenshots/menu_principal.png) | **Menu** (botão I na raiz): **Favoritos**, **Recentes**, **Buscar** e **Sobre**. |
 | ![Favoritos](docs/screenshots/favoritos.png) | **Listas de favoritos e recentes**: escolher um jogo leva direto até ele (o OS entra na pasta, o cursor vai até o jogo e a tela do jogo abre). Favoritos e recentes ficam salvos no `RGPOA.DAT`. |
+| ![Busca](docs/screenshots/busca_teclado.png) | **Busca em todo o cartão**: digite parte do nome no teclado da tela (direcional + II, I apaga, RUN busca). O mod percorre todas as pastas do SD, sem gravar nada. |
+| ![Resultados](docs/screenshots/busca_resultados.png) | **Resultados** (até 64, ignorando maiúsculas/minúsculas): escolha um e o console vai até o jogo, como nos favoritos. |
 | ![Sobre](docs/screenshots/sobre.png) | **Tela Sobre** com a versão do mod e os créditos. |
 | ![Carregando](docs/screenshots/carregando.png) | Mensagens de carregamento e atualização traduzidas. |
-
-**Pular para uma letra:** segure SELECT e aperte → (ou ↓) para ir à próxima letra, ← (ou ↑) para a anterior.
 
 **Temas com SELECT** (toque e solte), salvos no cartão SD. Cada tema tem suas cores e pode ter **banner próprio**. A release traz 10: Original, Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo, Papel, **Retrochimp Games** (grupo do Arnaldo) e **Maddrugamers** (canal no YouTube).
 
@@ -46,8 +46,6 @@ Ao ligar aparece uma **splash screen** por 1,5 segundo. Qualquer botão pula.
 | **RUN** | abre a tela do jogo (Carregar já vem selecionado: RUN de novo carrega) |
 | **I** | sobe uma pasta; na raiz, abre o **menu** (Favoritos / Recentes / Sobre) |
 | **SELECT** (toque) | troca o tema (fica salvo) |
-| **SELECT + → / ↓** | próxima letra |
-| **SELECT + ← / ↑** | letra anterior |
 | ↑ ↓ ← → | navega; ← → trocam de página |
 
 ## Instalação
@@ -62,7 +60,8 @@ O `RGPOA.DAT` aparece na lista da raiz. Deixe ele lá: dele saem as capas, o tem
 A v8 usa o `RGPOA.DAT` no formato v3. Um `.dat` de versão anterior **precisa ser trocado** pelo da release: o antigo é ignorado (sem capas). Os favoritos e recentes de testes da v7 não são aproveitados.
 
 ### Limites
-- O OS original da Krikzz mostra **no máximo 224 itens por pasta**. Pastas com mais arquivos têm jogos que nunca aparecem no console; vale dividi-las em subpastas.
+- O OS original da Krikzz mostra **no máximo 224 itens por pasta**. Pastas com mais arquivos têm jogos que nunca aparecem no console; vale dividi-las em subpastas. A busca encontra esses jogos, mas não consegue levar o cursor até eles.
+- A busca lê todas as pastas do cartão a cada pesquisa: ~1,5 s para 1.000 arquivos, uns 8–10 s para 6.000.
 - Depois de ir a um jogo pelos favoritos/recentes, o botão I volta para a raiz (e não para a pasta-mãe).
 - Até 56 favoritos e 14 recentes.
 
@@ -104,8 +103,9 @@ python tools/test_mod.py     # emulador headless: splash, menu, sobre, temas, ca
 python tools/test_v3.py      # capas + salvamento do tema (precisa de uma imagem de SD em sdcard_dump)
 python tools/test_v7.py      # tela do jogo, favoritos e recentes
 python tools/test_v8.py      # menu, listas e "ir ao jogo"
-python tools/test_v9.py      # II num jogo, SELECT (tema / pular letra), splash
+python tools/test_v9.py      # II num jogo, SELECT (tema), splash
 python tools/test_v10.py     # temas e banners do RGPOA.DAT
+python tools/test_v11.py     # busca global
 python tools/screenshots.py  # gera docs/screenshots/
 ```
 

@@ -1,5 +1,10 @@
 # Histórico
 
+## PT-BR v11
+- **Busca global** (menu > Buscar): teclado na tela, varredura de todas as pastas do cartão (só leitura), até 64 resultados; escolher um leva ao jogo.
+- Removido o "pular para letra" (SELECT + direção). SELECT volta a ser só o tema.
+- `RGPOA.DAT` igual ao da v10.
+
 ## PT-BR v10
 - **Temas e banners no `RGPOA.DAT`**: cada tema tem cores e, opcionalmente, um banner próprio (PNG 256×16, até 15 cores). Dá para criar e editar temas sem regravar o firmware (`themes/themes.json`).
 - 10 temas na release, todos com banner próprio exceto o Original. Inclui **Retrochimp Games** (grupo do Arnaldo) e **Maddrugamers**.

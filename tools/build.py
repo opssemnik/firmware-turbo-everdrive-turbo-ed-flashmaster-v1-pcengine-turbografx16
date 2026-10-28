@@ -8,8 +8,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from asm import assemble
 import art
 import cart_asm
+import search_asm
 
-MOD_VERSION = 10
+MOD_VERSION = 11
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -403,9 +404,13 @@ def build(src, dst):
     tsym.update({'B15_BANPAL': 0x7000, 'B15_SPLPAL': 0x7020, 'B15_BANMAP': 0x7040,
                  'B15_HELPMAP': 0x70c0, 'B15_BANTILES': 0x7100})
     tables += cart_asm.tables(enc)
+    tsym.update({'SEARCH_BANK': SPLASH_BANKS[1], 'SEARCH_ENTRY': search_asm.ORG})
     tcode, tsym = assemble(cart_asm.BANK13 + tables, 0xc400, tsym)
     if 0xc400 + len(tcode) > 0xe000: raise SystemExit('bank 13 overflow')
     rom.put(foff(13, 0xc400), tcode)
+    scode, _ = assemble(search_asm.SRC + search_asm.tables(enc), search_asm.ORG, dict(tsym))
+    if len(scode) > 0x800: raise SystemExit('search module too big: %d' % len(scode))
+    rom.put(foff(SPLASH_BANKS[1], search_asm.ORG), scode)
 
     # 5. about screen: version text + credits; splash hook (bank 11, $a000)
     sym['splash'] = tsym['splash']

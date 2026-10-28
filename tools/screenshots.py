@@ -67,7 +67,16 @@ def main():
     a = Machine.restore(root)
     a.press('I', 3, 60)
     shot(a, 'menu_principal')
-    a.press('DOWN', 2, 10); a.press('DOWN', 2, 10); a.pad = 8; a.run_frames(40); a.pad = 0
+    k = Machine.restore(root)            # menu > Buscar, type BOMB, search
+    k.press('I', 3, 60); k.press('DOWN', 2, 10); k.press('DOWN', 2, 10); k.press('RUN', 3, 60)
+    for seq in (['RIGHT'], ['DOWN', 'RIGHT', 'RIGHT', 'RIGHT'], ['LEFT', 'LEFT'], ['UP', 'LEFT']):
+        for key in seq: k.press(key, 2, 6)
+        k.press('II', 2, 10)
+    shot(k, 'busca_teclado')
+    k.press('RUN', 3, 400)
+    shot(k, 'busca_resultados')
+    for i in range(3): a.press('DOWN', 2, 10)
+    a.pad = 8; a.run_frames(40); a.pad = 0
     shot(a, 'sobre')
 
     f = Machine.restore(folder)        # two favourites, then menu > Favoritos

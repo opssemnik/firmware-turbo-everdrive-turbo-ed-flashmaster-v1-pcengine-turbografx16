@@ -142,6 +142,15 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - Os ícones da linha de ajuda continuam na paleta 4 e nos tiles `$100+`, que o banner customizado não toca.
 - `theme_set`: se o `.dat` tem temas, lê as cores e o banner do cartão (até 6 setores) e redesenha as linhas do banner. A cada `cls()`, `banner_rows` escreve o banner ativo.
 
+### Busca global
+- Código no banco 15 (`$1800`), executado com o banco mapeado em `$6000` (MPR3); chamado pelo menu (`hub_search`).
+- Teclado: 40 teclas (A–Z, 0–9, `-'&.`) + Espaço / Apagar / Buscar. Até 16 caracteres, em maiúsculas.
+- Varredura em largura: fila de clusters de pasta na VRAM `$6000` (até 1.024 pastas), seguindo a cadeia da FAT de cada pasta.
+- Nomes longos remontados das entradas LFN (attr `$0F`, byte baixo de cada caractere UTF-16 nas posições 1,3,5,7,9,14,…,30); sem LFN, usa o 8.3.
+- Considera só arquivos `.PCE`/`.SGX`. Comparação de substring sem diferenciar maiúsculas.
+- Resultados na VRAM `$6800` (20 words cada: pasta, cluster do arquivo e 32 caracteres do nome), até 64.
+- Escolher um resultado preenche `GDIR`/`GFILE` e segue o mesmo caminho dos favoritos. Nenhuma gravação no SD.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.

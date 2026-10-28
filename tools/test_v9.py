@@ -1,4 +1,4 @@
-"""v9: II on a game opens the game screen, SELECT+direction jumps letters, SELECT tap = theme."""
+"""v9: II on a game opens the game screen, SELECT tap = theme, 1.5 s splash."""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.stdout.reconfigure(encoding='utf-8')
@@ -31,12 +31,3 @@ for k in ['DOWN'] * 3: m.press(k, 2, 4)
 m.press('II', 3, 60); print('II on game:', [l for l in txt(m) if 'Carregar' in l or '.pce' in l][:2])
 m.press('I', 3, 90)
 t0 = theme(m); m.press('SEL', 3, 20); print('SELECT tap theme', t0, '->', theme(m))
-t1 = theme(m)
-print('at', bar(m))
-for i in range(4):
-    combo(m, SEL, RIGHT); print('SEL+RIGHT ->', bar(m))
-combo(m, SEL, LEFT); print('SEL+LEFT  ->', bar(m))
-combo(m, SEL, LEFT); print('SEL+LEFT  ->', bar(m))
-print('theme unchanged by letter jumps:', theme(m) == t1)
-for i in range(12): combo(m, SEL, DOWN)
-print('after 12 next-letter jumps ->', bar(m), txt(m)[2])

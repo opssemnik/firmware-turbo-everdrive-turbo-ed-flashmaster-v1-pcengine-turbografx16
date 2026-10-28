@@ -1004,8 +1004,8 @@ def tables(enc):
     t += '\nslot_magic: .db "RGPOA-SLOT"'
     t += '\nopt_row: .db 5,8,11'
     t += '\nopt_tab: .dw s_load,s_fav,s_back,s_unfav'
-    t += '\nhub_row: .db 6,9,12'
-    t += '\nhub_tab: .dw s_mfav,s_mrec,s_mabout'
+    t += '\nhub_row: .db 5,8,11,14'
+    t += '\nhub_tab: .dw s_mfav,s_mrec,s_msearch,s_mabout'
     t += '\ntitle_tab: .dw s_tfav,s_trec'
     for name, text in MENU_STRINGS.items():
         t += '\n%s: .db %s' % (name, db(enc(text)))
@@ -1028,6 +1028,7 @@ MENU_STRINGS = {  # padded so a shorter text erases a longer one
     's_mfav':    '  Favoritos',
     's_mrec':    '  Recentes ',
     's_mabout':  '  Sobre    ',
+    's_msearch': '  Buscar   ',
     's_hint_menu': 'RUN/II: abrir    I: voltar   ',
     's_tfav':    'Favoritos',
     's_trec':    'Recentes ',
@@ -1768,7 +1769,7 @@ hub_loop:
 hub_up:
     lda HCUR
     bne hub_up1
-    lda #$03
+    lda #$04
 hub_up1:
     dec a
     sta HCUR
@@ -1776,7 +1777,7 @@ hub_up1:
 hub_dn:
     lda HCUR
     inc a
-    cmp #$03
+    cmp #$04
     bcc hub_dn1
     cla
 hub_dn1:
@@ -1790,12 +1791,15 @@ hub_upd:
     bra hub_loop
 hub_ok:
     lda HCUR
-    cmp #$02
+    cmp #$03
     beq hub_about
+    cmp #$02
+    beq hub_search
     sta LKIND
     jsr list_screen
+hub_picked:
     cmp #$00
-    beq hub_redraw
+    jeq hub_redraw
     ldx #$03            ; go: the OS's "enter folder" code reads the cluster at $3b96
 hub_go:
     lda GDIR,x
@@ -1815,6 +1819,17 @@ hub_go:
 hub_about:
     jsr $8144           ; the OS about screen
     jmp hub_redraw
+hub_search:             ; search module in bank 14, run through MPR3 at $6000
+    tma #$08
+    pha
+    lda #SEARCH_BANK
+    tam #$08
+    jsr SEARCH_ENTRY
+    tay
+    pla
+    tam #$08
+    tya
+    bra hub_picked
 hub_back:
     jsr $eda9
     cla
@@ -1868,7 +1883,7 @@ hd_put:
 hd_next:
     inc ADI
     lda ADI
-    cmp #$03
+    cmp #$04
     bne hd_opt
     lda #lo(s_hint_menu)
     sta T
@@ -2408,7 +2423,7 @@ cur_index:              ; browser cursor (index local; the joy() call pushed 2 b
     tax
     rts
 
-; ---------------------------------------------------------------- SELECT (themes on release, letters with a direction), II on a game
+; ---------------------------------------------------------------- SELECT (theme on release), II on a game
 input_tick:
     lda $2228           ; held buttons
     and #$04
@@ -2417,28 +2432,12 @@ input_tick:
     sta INJ
     lda #$01
     sta SELHELD
-    lda $222d
-    bit #$90            ; LEFT or UP: previous letter
-    bne it_prev
-    bit #$60            ; RIGHT or DOWN: next letter
-    bne it_next
     rts
-it_prev:
-    sta SELUSED
-    cla
-    jmp letter_jump
-it_next:
-    sta SELUSED
-    lda #$01
-    jmp letter_jump
 it_nosel:
     lda SELHELD
     beq it_ii
     stz SELHELD
-    lda SELUSED
-    stz SELUSED
-    bne it_ii
-    jsr theme_next      ; SELECT released without a direction
+    jsr theme_next      ; SELECT released
 it_ii:
     lda $222d           ; II alone on a game: open the game screen like RUN
     cmp #$02
@@ -2476,133 +2475,6 @@ ei_file:
     sbc #$1f            ; carry clear: -$20
 ei_ret:
     rts
-
-bsearch:                ; first index in [BSLO, BSHI) where the predicate holds -> A
-bs_loop:
-    lda BSLO
-    cmp BSHI
-    bcs bs_done
-    clc
-    adc BSHI
-    ror a
-    sta BSMID
-    jsr entry_info
-    ldx BSMODE
-    beq bs_gt
-    dex
-    beq bs_ge
-    lda ISDIR           ; mode 2: is a file
-    beq bs_true
-    bra bs_false
-bs_gt:
-    cmp BSKEY
-    beq bs_false
-    bcs bs_true
-    bra bs_false
-bs_ge:
-    cmp BSKEY
-    bcs bs_true
-bs_false:
-    lda BSMID
-    inc a
-    sta BSLO
-    bra bs_loop
-bs_true:
-    lda BSMID
-    sta BSHI
-    bra bs_loop
-bs_done:
-    lda BSLO
-    rts
-
-letter_jump:            ; A = 1 next letter, 0 previous letter (the list is sorted, case-insensitive)
-    sta LDIR
-    lda $3a62           ; number of entries (the OS shows at most 224)
-    ldx $3a63
-    beq lj_n
-    lda #224
-lj_n:
-    sta LN
-    cmp #$00
-    bne lj_go
-    rts
-lj_go:
-    jsr cur_index
-    stx LC
-    txa
-    jsr entry_info
-    sta LCH
-    lda ISDIR
-    sta LISDIR
-    stz BSLO            ; folders come first: D = first file
-    lda LN
-    sta BSHI
-    lda #$02
-    sta BSMODE
-    jsr bsearch
-    sta DCNT
-    lda LISDIR          ; search inside the current group (folders or files)
-    beq lj_files
-    stz RS
-    lda DCNT
-    sta RE
-    bra lj_dir
-lj_files:
-    lda DCNT
-    sta RS
-    lda LN
-    sta RE
-lj_dir:
-    lda LDIR
-    beq lj_prev
-    lda LC              ; next: first entry after LC whose letter is greater
-    inc a
-    sta BSLO
-    lda RE
-    sta BSHI
-    lda LCH
-    sta BSKEY
-    stz BSMODE
-    jsr bsearch
-    cmp RE
-    bcc lj_set
-    lda RS              ; past the end: wrap to the first entry
-    bra lj_set
-lj_prev:
-    lda RS              ; g = first entry of the current letter
-    sta BSLO
-    lda LC
-    sta BSHI
-    lda LCH
-    sta BSKEY
-    lda #$01
-    sta BSMODE
-    jsr bsearch
-    cmp LC
-    bcc lj_set          ; not at the start of the letter yet: go there
-    cmp RS
-    bne lj_before
-    lda RE              ; already at the first letter: wrap to the last letter
-    dec a
-    bra lj_key
-lj_before:
-    dec a               ; letter of the entry just before this group
-lj_key:
-    sta LT
-    jsr entry_info
-    sta BSKEY
-    lda RS
-    sta BSLO
-    lda LT
-    inc a
-    sta BSHI
-    lda #$01
-    sta BSMODE
-    jsr bsearch
-lj_set:
-    sta GTGT
-    stz GRUN
-    jmp seek_start
 
 dir_ordinal:            ; scan CURDIR for GFILE, counting entries the way the OS numbers them
     stz ORD
