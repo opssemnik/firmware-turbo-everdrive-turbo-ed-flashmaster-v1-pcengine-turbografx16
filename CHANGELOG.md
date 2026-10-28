@@ -1,5 +1,8 @@
 # Histórico
 
+## PT-BR v17.1 (só o RGPOA.DAT)
+- Splash do tema **Retrochimp Games**: "Grupo criado pelo Arnaldo / Itens do Japão a preços baixos / Informações no WhatsApp".
+
 ## PT-BR v17
 - **Corrige o carregamento de jogos, que estava quebrado na v15 e na v16** (a tela de carregar bugava e o jogo não iniciava). A rotina do OS que lia a data também faz parte da sequência que inicia o jogo, e as duas versões tinham mexido nela. Ela voltou a ser a original.
 - A data e a hora de compilação agora ficam no próprio OS (banco 12) e a tela Sobre lê de lá.

@@ -113,9 +113,10 @@ def retrochimp():
     s.set(cx - 30, 167, red); s.set(cx + 29, 167, red)
     s.text('GAMES', 164, 1, navy)
     s.sprite(INVADER, 18, 162, {'X': cream}); s.sprite(INVADER, 227, 162, {'X': cream})
-    s.text('Games * Consoles', 182, 1, teal)
-    s.text('Acessórios * Colecionáveis', 192, 1, teal)
-    s.text('Aperte um botão', 210, 1, (4, 4, 4))
+    s.text('Grupo criado pelo Arnaldo', 180, 1, cream)
+    s.text('Itens do Japão a preços baixos', 190, 1, yel)
+    s.text('Informações no WhatsApp', 200, 1, (2, 6, 2))
+    s.text('Aperte um botão', 213, 1, (4, 4, 4))
     s.save('retrochimp')
 
 
