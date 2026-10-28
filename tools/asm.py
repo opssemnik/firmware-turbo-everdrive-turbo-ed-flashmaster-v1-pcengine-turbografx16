@@ -12,6 +12,8 @@ from huc6280 import T, SIZE
 REV = {}
 for op, (m, md) in T.items():
     REV[(m, md)] = op
+LONG = {'jeq': 'bne', 'jne': 'beq', 'jcc': 'bcs', 'jcs': 'bcc', 'jpl': 'bmi', 'jmi': 'bpl',
+        'jvc': 'bvs', 'jvs': 'bvc'}
 BRANCH = {'bpl', 'bmi', 'bvc', 'bvs', 'bcc', 'bcs', 'bne', 'beq', 'bra', 'bsr'}
 
 
@@ -74,6 +76,10 @@ def assemble(src, org, sym=None):
                 continue
             parts = s.split(None, 1)
             m = parts[0].lower(); opnd = parts[1] if len(parts) > 1 else ''
+            if m in LONG:  # long branch: inverted short branch over a jmp
+                t = _ev(opnd, sym, pas)
+                out += bytes([REV[(LONG[m], 'rel')], 3, 0x4c, t & 0xff, (t >> 8) & 0xff])
+                pc += 5; continue
             if m in ('.db', '.byte'):
                 for item in _split_args(opnd):
                     if item.startswith('"'):

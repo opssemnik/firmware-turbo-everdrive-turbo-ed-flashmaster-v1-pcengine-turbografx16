@@ -1,10 +1,13 @@
 """Build RGPOA.DAT (theme save + game artwork) for the SD card root.
 
-usage: python artpack.py [sdcard_dir] [out_file]
+usage: python artpack.py [--keep OLD.DAT] [out_file]
+  --keep copies the saved theme, favourites and recents from an existing RGPOA.DAT.
 
-Layout (512-byte sectors, offsets relative to the file start):
-  sector 0      header: magic[16] "RGPOA-DAT-v1", theme(1), nbuckets(1), reserved
-  1..nb         index buckets: 64 entries x 8 bytes (hashA u16, hashB u16, art sector u32); sector 0 = end
+Layout v2 (512-byte sectors, offsets relative to the file start):
+  sector 0      header: magic[16] "RGPOA-DAT-v2", theme(1), nbuckets(1), version(1)
+  1..8          favourites, 9..10 recents: "RGPOA-SLOT" kind('F'/'R') rel_sector 0 0 0 0,
+                then 7 entries x 64 bytes: dir cluster u32 (0 = empty), seq u16, name[58]
+  11..10+nb     index buckets: 64 entries x 8 bytes (hashA u16, hashB u16, art sector u32); sector 0 = end
   art blocks    13 sectors each: [magic "RGA1", hashA, hashB, palette 16 x u16] + 6144 bytes of sprites
 The cart identifies the selected game by hashing the name shown in the browser's bottom bar.
 """
@@ -13,7 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import artconv
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MAGIC = b'RGPOA-DAT-v1'.ljust(16, b'\0')
+MAGIC = b'RGPOA-DAT-v2'.ljust(16, b'\0')
+FAV_BASE, FAV_SECTORS, REC_BASE, REC_SECTORS, INDEX_BASE = 1, 8, 9, 2, 11
 ART_MAGIC = b'RGA1'
 ART_SECTORS = 13
 BAR_CHARS = 60  # the bottom bar shows 2 x 30 characters
@@ -38,7 +42,13 @@ def vce(rgb):
     return (g << 6) | (r << 3) | b
 
 
-def build(sd, out, theme=0):
+def slot_sector(kind, rel):
+    sec = bytearray(512)
+    sec[:10] = b'RGPOA-SLOT'; sec[10] = ord(kind); sec[11] = rel
+    return sec
+
+
+def build(sd, out, theme=0, keep=None):
     matches = json.load(open(os.path.join(ROOT, 'art_cache', 'matches.json'), encoding='utf-8'))
     arts = {}      # image -> block index
     entries = {}   # hash -> image
@@ -59,7 +69,7 @@ def build(sd, out, theme=0):
         if max(len(b) for b in buckets) <= 63 or nb == 128: break
         nb *= 2
     if max(len(b) for b in buckets) > 63: raise SystemExit('too many games for the index')
-    first_art = 1 + nb
+    first_art = INDEX_BASE + nb
     blocks = []
     order = sorted(arts, key=arts.get)
     for img in order:
@@ -67,9 +77,18 @@ def build(sd, out, theme=0):
         blocks.append((idx, colors))
     sector_of = {img: first_art + i * ART_SECTORS for i, img in enumerate(order)}
 
+    slots = [slot_sector('F', FAV_BASE + i) for i in range(FAV_SECTORS)]
+    slots += [slot_sector('R', REC_BASE + i) for i in range(REC_SECTORS)]
+    if keep:
+        old = open(keep, 'rb').read()
+        if old[:12] in (b'RGPOA-DAT-v1', b'RGPOA-DAT-v2'): theme = old[16]
+        if old[:12] == b'RGPOA-DAT-v2':
+            slots = [bytearray(old[(1 + i) * 512:(2 + i) * 512]) for i in range(len(slots))]
+        print('kept from %s: theme %d%s' % (keep, theme, ', favourites + recents' if old[:12] == b'RGPOA-DAT-v2' else ''))
     data = bytearray()
-    hdr = bytearray(512); hdr[:16] = MAGIC; hdr[16] = theme; hdr[17] = nb; hdr[18] = 1
+    hdr = bytearray(512); hdr[:16] = MAGIC; hdr[16] = theme; hdr[17] = nb; hdr[18] = 2
     data += hdr
+    for sec in slots: data += sec
     for b in buckets:
         sec = bytearray(512)
         for i, h in enumerate(b):
@@ -88,6 +107,9 @@ def build(sd, out, theme=0):
 
 
 if __name__ == '__main__':
-    sd = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'sdcard')
-    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'out', 'RGPOA.DAT')
-    build(sd, out)
+    args = sys.argv[1:]
+    keep = None
+    if '--keep' in args:
+        i = args.index('--keep'); keep = args[i + 1]; del args[i:i + 2]
+    out = args[0] if args else os.path.join(ROOT, 'out', 'RGPOA.DAT')
+    build(None, out, keep=keep)

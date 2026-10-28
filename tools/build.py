@@ -9,7 +9,7 @@ from asm import assemble
 import art
 import cart_asm
 
-MOD_VERSION = 6
+MOD_VERSION = 7
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -183,6 +183,37 @@ cls_new:                ; cls() entry ($eda9) jumps here
 cls_orig:
     lda $276f           ; first instruction of the stock cls, overwritten by the jump
     jmp $edac
+
+act_far:                ; action screen in bank 13 -> A = 0 load, 1 back
+    tma #$40
+    pha
+    lda #$0d
+    tam #$40
+    jsr action
+    tay
+    pla
+    tam #$40
+    tya
+    rts
+"""
+
+HOOK10 = """
+; bank 10 free space. RUN on a file jumps here instead of starting to load it.
+hook10:
+    jsr act_far
+    cmp #$00
+    bne h10_back
+    lda <$00            ; the two instructions the jump replaced
+    sec
+    jmp $a96d
+h10_back:               ; same as the OS does around the about screen: force a full redraw
+    ldx #$ff
+    lda #$ff
+    stx $3b8e
+    sta $3b8f
+    stx $3b90
+    sta $3b91
+    jmp $b2bf
 """
 
 def puts(label, x, y):
@@ -344,7 +375,7 @@ def build(src, dst):
     tables += '\nban_map: .dw ' + ','.join(str(w) for w in ban)
     tables += '\nhelp_map: .dw ' + ','.join(str(w) for w in help_row)
     tables += '\nban_tiles: .db ' + ','.join(str(x) for x in ts.blob())
-    tables += cart_asm.tables()
+    tables += cart_asm.tables(enc)
     tcode, tsym = assemble(cart_asm.BANK13 + tables, 0xc400, tsym)
     if 0xc400 + len(tcode) > 0xe000: raise SystemExit('bank 13 overflow')
     rom.put(foff(13, 0xc400), tcode)
@@ -362,11 +393,15 @@ def build(src, dst):
     rom.d[foff(11, 0xad55):foff(11, 0xad57)] = bytes([sym['splash_entry'] & 0xff, sym['splash_entry'] >> 8])
 
     # 6. bank 0: SELECT/help hook + cls hook; vsync IRQ scrolls the BG by BG_SCROLL
-    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('theme_next', 'idle', 'banner_draw')})
+    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('theme_next', 'idle', 'banner_draw', 'action')})
     if 0xff63 + len(jcode) > 0xfff6: raise SystemExit('bank 0 hook overflow')
     rom.put(foff(0, 0xff63), jcode)
     rom.expect(foff(10, 0xa567), '20 e9 f8')
     rom.d[foff(10, 0xa568):foff(10, 0xa56a)] = bytes([jsym['joyhook'] & 0xff, jsym['joyhook'] >> 8])
+    hcode, hsym = assemble(HOOK10, 0xbf63, {'act_far': jsym['act_far']})
+    rom.put(foff(10, 0xbf63), hcode)
+    rom.expect(foff(10, 0xa96a), 'a5 00 38 e9 02')   # RUN on a file: start of the load path
+    rom.d[foff(10, 0xa96a):foff(10, 0xa96d)] = bytes([0x4c, 0x63, 0xbf])
     rom.expect(0x0da9, 'ad 6f 27')             # cls(): lda $276f
     rom.d[0x0da9:0x0dac] = bytes([0x4c, jsym['cls_new'] & 0xff, jsym['cls_new'] >> 8])
     rom.expect(0x027d, 'ad 10 22 8d 02 00 ad 11 22')  # vsync IRQ: BYR = bg_y

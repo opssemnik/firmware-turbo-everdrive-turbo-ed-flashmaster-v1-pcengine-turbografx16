@@ -86,6 +86,7 @@ Os bancos `$40+` são a flash do cartucho, com comandos AMD (`$6AAA`/`$6555`). O
 | BG rolado 16 px: o IRQ grava BYR = 240 constante (`$E27D`); o banner fica nas linhas 30–31 do BAT | banco 0 |
 | Splash: gancho no `set_font_pal(0)` de `main` (`$AD54`) | banco 11 `$B6xx` → banco 13 |
 | Tela Sobre: versão em texto (no lugar de `put_number(4)`) + créditos | banco 11 `$B600` |
+| Tela do jogo: o início do caminho de carregamento (`$A96A`, RUN num arquivo) vira `jmp $BF63` | banco 10 `$BF63` → banco 0 `act_far` → banco 13 `action` |
 | Temas, banner, ajuda, splash, driver SD, capas | banco 13 `$C400+` (`tools/cart_asm.py`), chamado via MPR6 |
 | Tiles e mapa da splash | bancos 14 e 15 |
 
@@ -103,10 +104,19 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 4. Se o hash ficar estável por 12 frames, lê o bucket `(A ^ B) & máscara` do índice, acha o setor da capa, carrega a paleta na CRAM `$100` e os 12 setores de padrões na VRAM `$4000`.
 5. Liga 6 sprites de 32×64 (painel de 96×128 em x=152, y=40) escrevendo na SATB.
 
+### Tela do jogo, favoritos e recentes
+- Em `$A932` o OS testa o RUN; se o item não é pasta, vai para `$A96A`, que abre o arquivo (nome em `$3A64`) e decide entre atualizar o OS (`TOS.PCE`) e carregar o jogo.
+- O gancho em `$A96A` chama a tela do jogo, que retorna:
+  - **Carregar:** registra nos recentes, refaz as duas instruções substituídas (`lda <$00 / sec`) e segue em `$A96D`.
+  - **Voltar:** grava `$FFFF` em `$3B8E-$3B91` (a mesma coisa que o OS faz antes da tela Sobre, para forçar o redesenho completo) e salta para `$B2BF`, o fim do tratamento de teclas. A pilha C fica no mesmo ponto (`$3FE8`, conferido no emulador).
+- Estado da tela em `$2040-$2056`. Essa faixa só é gravada pela rotina de carregamento do jogo, que roda depois e termina em reset.
+- Cada favorito ou recente guarda o cluster da pasta (`$30C1`), um número de sequência e os 56 primeiros caracteres do nome. Assim a próxima etapa consegue ir até o jogo.
+- Recentes: quando a lista está cheia, o mais antigo (menor sequência) é substituído. O `TOS.PCE` não é registrado.
+
 ### Salvamento do tema
-- Grava só o setor 0 do `RGPOA.DAT`, com CMD24.
-- Antes, relê o setor e confere a assinatura `RGPOA-DAT-v1`, e recusa LBA abaixo de `$30B5`.
-- Altera só o byte 16.
+- Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
+- Antes de gravar, quem chama relê o setor e confere a assinatura dele.
+- O tema altera só o byte 16 do setor 0.
 - Depois relê o setor, para deixar um stream de leitura aberto como o OS espera.
 
 ## Formato do `RGPOA.DAT`
@@ -115,8 +125,9 @@ Setores de 512 bytes, contados a partir do início do arquivo.
 
 | setor | conteúdo |
 |---|---|
-| 0 | `RGPOA-DAT-v1` + 4 zeros (16 bytes), tema (byte 16), nº de buckets (byte 17, potência de 2), versão (byte 18) |
-| 1 .. nb | buckets: 64 entradas de 8 bytes `hashA u16, hashB u16, setor u32` (setor 0 = fim) |
+| 0 | `RGPOA-DAT-v2` + 4 zeros (16 bytes), tema (byte 16), nº de buckets (byte 17, potência de 2), versão (byte 18) |
+| 1 .. 8 | favoritos; 9 .. 10 recentes: `RGPOA-SLOT`, tipo (`F`/`R`), nº do setor, 4 zeros; depois 7 entradas de 64 bytes: `cluster u32` (0 = vazia), `seq u16`, `nome[58]` |
+| 11 .. 10+nb | buckets: 64 entradas de 8 bytes `hashA u16, hashB u16, setor u32` (setor 0 = fim) |
 | resto | capas, 13 setores cada: `"RGA1"`, 4 bytes reservados, 16 cores (u16 no formato do VCE: `GGGRRRBBB`), depois 6.144 bytes de padrões de sprite (6 sprites 32×64, células 16×16 com 4 planos) |
 
 ## Ferramentas

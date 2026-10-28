@@ -44,6 +44,11 @@ def main():
     shot(m, 'capa')
     folder = m.snapshot()
 
+    act = Machine.restore(folder)
+    act.press('RUN', 3, 60)
+    act.press('DOWN', 2, 10)
+    shot(act, 'acoes')
+
     tiles = []
     t = Machine.restore(folder)
     for i in range(len(THEMES)):
@@ -61,7 +66,8 @@ def main():
     shot(a, 'sobre')
 
     g = Machine.restore(folder)
-    g.pad = 8; g.run_frames(6); g.pad = 0
+    g.press('RUN', 3, 60)          # action screen, "Carregar" selected
+    g.pad = 8; g.run_frames(4); g.pad = 0
     for f in range(60):
         g.run_frames(2)
         if 'Carreg' in g.text(rows=28): shot(g, 'carregando'); break

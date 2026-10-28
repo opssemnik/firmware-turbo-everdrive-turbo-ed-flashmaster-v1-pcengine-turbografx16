@@ -1,5 +1,11 @@
 # Histórico
 
+## PT-BR v7
+- **Tela do jogo** ao apertar RUN num arquivo: nome, capa e as opções Carregar, Favoritar / Remover favorito e Voltar.
+- Favoritos (até 56) e recentes (últimos 14 jogos carregados) salvos no `RGPOA.DAT`.
+- `RGPOA.DAT` passa para o formato v2 (setores de favoritos e recentes); é preciso trocar o arquivo.
+- `artpack.py --keep` gera um `.dat` novo mantendo tema, favoritos e recentes do atual.
+
 ## PT-BR v6
 - Splash de 2 segundos (antes 3).
 
