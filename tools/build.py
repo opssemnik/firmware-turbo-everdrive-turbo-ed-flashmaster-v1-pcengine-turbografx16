@@ -12,7 +12,7 @@ import search_asm
 import loader_asm
 import extra_asm
 
-MOD_VERSION = 15
+MOD_VERSION = 16
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -494,9 +494,15 @@ def build(src, dst):
     time_w = (now.hour * 3600 + now.minute * 60 + now.second) // 2
     rom.d[0xf4:0xf8] = bytes([date_w >> 8, date_w & 0xff, time_w >> 8, time_w & 0xff])
     # the OS reads them through flash bank $40, which on the cart is the firmware area (it showed
-    # the cart's own 2012 date); read them from this OS's bank 0 instead
-    rom.expect(0x1f2e, 'a9 40 53 08 ad f4 60')
-    rom.d[0x1f2f] = 0x00
+    # the cart's own 2012 date), and bank $00 there isn't this OS either (it showed 2176); so the
+    # read routine at $FF2E now stores the four bytes as immediates
+    rom.expect(0x1f2e, 'a9 40 53 08 ad f4 60 8d 8b 2b ad f5 60 8d 8a 2b ad f6 60 8d 8d 2b ad f7 60 8d 8c 2b '
+                       'ad 8e 2c 53 08 60')
+    code = b''
+    for val, addr in zip(rom.d[0xf4:0xf8], (0x2b8b, 0x2b8a, 0x2b8d, 0x2b8c)):
+        code += bytes([0xa9, val, 0x8d, addr & 0xff, addr >> 8])   # lda #val / sta addr
+    code += bytes([0xad, 0x8e, 0x2c, 0x53, 0x08, 0x60])            # restore MPR3, rts
+    rom.d[0x1f2e:0x1f2e + 34] = code + b'\xea' * (34 - len(code))
     print('  build date %s' % now.strftime('%d.%m.%Y %H:%M:%S'))
     open(dst, 'wb').write(rom.d)
     print('built %s  (%s)  md5 %s' % (dst, VERSION_STR, hashlib.md5(rom.d).hexdigest()))

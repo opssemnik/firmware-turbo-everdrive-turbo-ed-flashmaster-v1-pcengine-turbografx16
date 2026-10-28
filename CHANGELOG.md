@@ -1,5 +1,8 @@
 # Histórico
 
+## PT-BR v16
+- **Data/Hora Compil.** corrigidas de novo: na v15 a leitura passou para o banco `$00` da flash, mas no cartucho esse banco também não é o OS (aparecia 09.12.2176 06:26:38). Agora a data e a hora ficam gravadas direto no código, sem ler a flash.
+
 ## PT-BR v15
 - **Tela do jogo: ← / →** passam para o jogo anterior / seguinte da pasta (capa, favorito, Carregar e Voltar acompanham).
 - **Data/Hora Compil.** corrigidas no console: o OS lia esses bytes de uma área da flash que no cartucho é a do firmware (mostrava 31.07.2012). Agora são lidos do próprio OS.

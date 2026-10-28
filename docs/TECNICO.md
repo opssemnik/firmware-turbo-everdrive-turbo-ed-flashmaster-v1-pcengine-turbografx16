@@ -160,7 +160,7 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - O teste `test_v12.py` confere no emulador que a sequência de gravações na flash é idêntica à do OS sem a barra.
 
 ### Data e hora de compilação
-- No boot, o OS (`$FF29`) lê 4 bytes do banco de flash `$40`, offset `$F4`, e guarda em `$2B8A`–`$2B8D`; só a tela Sobre usa esses valores. No console, esse banco é a área do firmware do cartucho (mostrava 31.07.2012 16:42:54, a data do firmware), não o OS. O mod troca o banco lido por `$00`, o próprio OS, onde o build grava a data.
+- No boot, o OS (`$FF29`) lê 4 bytes do banco de flash `$40`, offset `$F4`, e guarda em `$2B8A`–`$2B8D`; só a tela Sobre usa esses valores. No console, esse banco é a área do firmware do cartucho (mostrava 31.07.2012 16:42:54, a data do firmware), não o OS. Trocar o banco por `$00` (v15) também não funcionou no console (mostrava 09.12.2176). Desde a v16, o build reescreve a rotina em `$FF2E` com `lda #valor / sta $2B8x` para os 4 bytes, então nada é lido da flash.
 - Formato (big-endian): data no padrão FAT (dia bits 0–4, mês 5–8, ano − 1980 nos bits 9–15); hora = segundos desde a meia-noite ÷ 2. O OS original deixa `FF FF FF FF`, por isso mostrava "31.15.2235".
 - `build.py` grava ali o momento da compilação.
 
