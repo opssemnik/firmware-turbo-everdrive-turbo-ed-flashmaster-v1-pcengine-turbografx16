@@ -151,6 +151,14 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - Resultados na VRAM `$6800` (20 words cada: pasta, cluster do arquivo e 32 caracteres do nome), até 64.
 - Escolher um resultado preenche `GDIR`/`GFILE` e segue o mesmo caminho dos favoritos. Nenhuma gravação no SD.
 
+### Barra de progresso do carregamento
+- O OS grava o jogo na flash com uma rotina que antes copia para a RAM (`$2B8E`, 256 bytes: identificador + código), porque a flash não pode ser lida durante a gravação. Ela é chamada uma vez por jogo (`$FD54`), com o número de bancos de 8 KB em X:A.
+- O mod troca `$FD54` por `ld_hook` (banco 0), que chama `prog_setup` (banco 13):
+  1. Copia para a RAM a mesma rotina, remontada a partir do original (`tools/loader_asm.py`). Instruções redundantes foram removidas (`tax/cla/txa`, `cla`, `cmp #$00/#$01` após `and`, `clc/adc #1` → `inc a`), e foi incluído um bloco da barra por banco gravado.
+  2. Calcula quantos bancos valem um bloco (até 26 blocos), desenha a moldura vazia (tiles `$1C0/$1C1`, paleta 4) na linha 18 do BAT e deixa o VDC apontando para o início da barra com o registrador 2 selecionado.
+- Dentro da rotina, cada bloco é só `st1`/`st2` (escrita direta no VDC, que avança sozinho). Nada é lido da flash durante a gravação.
+- O teste `test_v12.py` confere no emulador que a sequência de gravações na flash é idêntica à do OS sem a barra.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.

@@ -9,8 +9,9 @@ from asm import assemble
 import art
 import cart_asm
 import search_asm
+import loader_asm
 
-MOD_VERSION = 11
+MOD_VERSION = 12
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -193,6 +194,21 @@ hub_far:                ; menu in bank 13 -> A = 0 back, 1 go to a game
     tam #$40
     tya
     rts
+
+ld_hook:                ; replaces the OS's $fd54 (copy game to flash): bar setup, then the RAM routine
+    sei
+    phx
+    pha
+    tma #$40
+    pha
+    lda #$0d
+    tam #$40
+    jsr prog_setup      ; X = banks to copy
+    pla
+    tam #$40
+    pla
+    plx
+    jmp $2b8f
 
 act_far:                ; action screen in bank 13 -> A = 0 load, 1 back
     tma #$40
@@ -405,7 +421,14 @@ def build(src, dst):
                  'B15_HELPMAP': 0x70c0, 'B15_BANTILES': 0x7100})
     tables += cart_asm.tables(enc)
     tsym.update({'SEARCH_BANK': SPLASH_BANKS[1], 'SEARCH_ENTRY': search_asm.ORG})
-    tcode, tsym = assemble(cart_asm.BANK13 + tables, 0xc400, tsym)
+    # loading progress: the OS's RAM copy routine, rebuilt with a bar block per 8 KB bank
+    lsym = {'PCNT': loader_asm.PCNT, 'BAR_FULL': 0x41c1}
+    lcode, lsym = assemble(loader_asm.ROUTINE, loader_asm.RAM_ORG, lsym)
+    if len(lcode) > 0x100: raise SystemExit('loader routine too big: %d' % len(lcode))
+    tables += '\nld_routine: .db ' + ','.join(str(x) for x in lcode.ljust(0x100, bytes(1)))
+    tables += '\nbar_tiles: .db ' + ','.join(str(x) for x in loader_asm.tiles())
+    tsym.update({'PCNT': loader_asm.PCNT, 'LD_STEP_RAM': lsym['ld_step'] + 1})
+    tcode, tsym = assemble(cart_asm.BANK13 + loader_asm.SETUP + tables, 0xc400, tsym)
     if 0xc400 + len(tcode) > 0xe000: raise SystemExit('bank 13 overflow')
     rom.put(foff(13, 0xc400), tcode)
     scode, _ = assemble(search_asm.SRC + search_asm.tables(enc), search_asm.ORG, dict(tsym))
@@ -425,7 +448,7 @@ def build(src, dst):
     rom.d[foff(11, 0xad55):foff(11, 0xad57)] = bytes([sym['splash_entry'] & 0xff, sym['splash_entry'] >> 8])
 
     # 6. bank 0: SELECT/help hook + cls hook; vsync IRQ scrolls the BG by BG_SCROLL
-    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('idle', 'banner_draw', 'action', 'hub')})
+    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('idle', 'banner_draw', 'action', 'hub', 'prog_setup')})
     if 0xff63 + len(jcode) > 0xfff6: raise SystemExit('bank 0 hook overflow')
     rom.put(foff(0, 0xff63), jcode)
     rom.expect(foff(10, 0xa567), '20 e9 f8')
@@ -437,6 +460,9 @@ def build(src, dst):
     rom.d[foff(10, 0xa96a):foff(10, 0xa96d)] = bytes([0x4c, 0x63, 0xbf])
     rom.expect(foff(10, 0xb0e9), '20 44 81')   # I at the root: jsr about
     rom.d[foff(10, 0xb0ea):foff(10, 0xb0ec)] = bytes([hsym['hub10b'] & 0xff, hsym['hub10b'] >> 8])
+    rom.expect(0x1d54, '78 ad 8e 2b c9 01 f0 07 73 66 fd 8e 2b 00 01 4c 8f 2b')  # copy game to flash
+    rom.d[0x1d54:0x1d57] = bytes([0x4c, jsym['ld_hook'] & 0xff, jsym['ld_hook'] >> 8])
+    print('  loader routine %d bytes' % len(lcode))
     rom.expect(0x0da9, 'ad 6f 27')             # cls(): lda $276f
     rom.d[0x0da9:0x0dac] = bytes([0x4c, jsym['cls_new'] & 0xff, jsym['cls_new'] >> 8])
     rom.expect(0x027d, 'ad 10 22 8d 02 00 ad 11 22')  # vsync IRQ: BYR = bg_y

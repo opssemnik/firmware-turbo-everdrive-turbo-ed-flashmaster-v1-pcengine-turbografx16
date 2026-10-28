@@ -1,5 +1,9 @@
 # Histórico
 
+## PT-BR v12
+- **Barra de progresso** no "Carregando...": enche conforme cada bloco de 8 KB do jogo é gravado na flash.
+- `RGPOA.DAT` igual ao da v10/v11.
+
 ## PT-BR v11
 - **Busca global** (menu > Buscar): teclado na tela, varredura de todas as pastas do cartão (só leitura), até 64 resultados; escolher um leva ao jogo.
 - Removido o "pular para letra" (SELECT + direção). SELECT volta a ser só o tema.

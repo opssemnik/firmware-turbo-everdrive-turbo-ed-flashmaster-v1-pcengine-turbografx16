@@ -92,7 +92,8 @@ def main():
     g.pad = 8; g.run_frames(4); g.pad = 0
     for f in range(60):
         g.run_frames(2)
-        if 'Carreg' in g.text(rows=28): shot(g, 'carregando'); break
+        row = [g.vram[18 * 64 + c] & 0x7ff for c in range(32)]
+        if row.count(0x1c1) * 2 >= row.count(0x1c0) + row.count(0x1c1) > 0: shot(g, 'carregando'); break
     bdir = os.path.join(ROOT, 'themes', 'banners')
     names = sorted(f for f in os.listdir(bdir) if f.endswith('.png'))
     gal = Image.new('RGB', (768, len(names) * 54), (40, 40, 40))
