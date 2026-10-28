@@ -3,7 +3,7 @@
 Mod do sistema operacional (OS) do **Turbo EverDrive v1** da Krikzz para PC Engine / TurboGrafx-16.
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v8** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v9** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -19,20 +19,24 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 | ![Sobre](docs/screenshots/sobre.png) | **Tela Sobre** com a versão do mod e os créditos. |
 | ![Carregando](docs/screenshots/carregando.png) | Mensagens de carregamento e atualização traduzidas. |
 
-**8 temas de cor com SELECT**, salvos no cartão SD: Original, Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo e Papel.
+**Pular para uma letra:** segure SELECT e aperte → (ou ↓) para ir à próxima letra, ← (ou ↑) para a anterior.
+
+**8 temas de cor com SELECT** (toque e solte): Original, Fósforo Verde, Âmbar, Azul, Brasil, Synthwave, Turbo e Papel.
 
 ![Temas](docs/screenshots/temas.png)
 
-Ao ligar aparece uma **splash screen** por 2 segundos. Qualquer botão pula.
+Ao ligar aparece uma **splash screen** por 1,5 segundo. Qualquer botão pula.
 
 ## Botões
 
 | Botão | Função |
 |---|---|
-| **II** | abre a pasta |
+| **II** | abre a pasta; num jogo, abre a tela do jogo |
 | **RUN** | abre a tela do jogo (Carregar já vem selecionado: RUN de novo carrega) |
 | **I** | sobe uma pasta; na raiz, abre o **menu** (Favoritos / Recentes / Sobre) |
-| **SELECT** | troca o tema (fica salvo) |
+| **SELECT** (toque) | troca o tema (fica salvo) |
+| **SELECT + → / ↓** | próxima letra |
+| **SELECT + ← / ↑** | letra anterior |
 | ↑ ↓ ← → | navega; ← → trocam de página |
 
 ## Instalação
@@ -89,6 +93,7 @@ python tools/test_mod.py     # emulador headless: splash, menu, sobre, temas, ca
 python tools/test_v3.py      # capas + salvamento do tema (precisa de uma imagem de SD em sdcard_dump)
 python tools/test_v7.py      # tela do jogo, favoritos e recentes
 python tools/test_v8.py      # menu, listas e "ir ao jogo"
+python tools/test_v9.py      # II num jogo, SELECT (tema / pular letra), splash
 python tools/screenshots.py  # gera docs/screenshots/
 ```
 

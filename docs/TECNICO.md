@@ -125,6 +125,16 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
   4. No primeiro frame ocioso, o mod acha o ordinal do arquivo varrendo a pasta (seguindo a FAT) e a posição dele em `$397D`, e confirma com `open(i)`.
   5. O gancho do `joy(0)` devolve RIGHT × (i/20), DOWN × (i%20) e RUN, o que abre a tela do jogo.
 
+### II num jogo e pular para letra
+- O gancho do `joy(0)` passa a devolver o que o mod decidir: 0 = botões reais, `$FF` = nada (o SELECT nunca chega ao OS), outro valor = tecla injetada.
+- II sozinho: o mod chama `open(índice)`. Se o tamanho (`$3B68`) for diferente de 0 é arquivo, e o mod injeta RUN, que abre a tela do jogo. Pastas têm tamanho 0 e seguem o II normal.
+- SELECT: o tema troca quando o botão é solto sem nenhuma direção apertada. SELECT + direção pula de letra.
+- Pular letra: a ordenação do OS ignora maiúsculas/minúsculas (pastas primeiro, depois arquivos). O total de itens está em `$3A62`.
+  1. Uma busca binária com `open()` acha a fronteira pastas/arquivos.
+  2. Outra busca acha o início da próxima letra (ou da anterior), dentro do mesmo grupo.
+  3. O cursor chega lá pela mesma rotina de busca usada pelos favoritos, que a cada frame compara a página e o índice atuais (local `sp+$10` dentro da chamada do `joy`) com o alvo e injeta ←/→/↑/↓.
+- Dados do banner, ícones, linha de ajuda e paletas ficam no banco 15 (`$1000+`), lidos via MPR3 (`$7000+`).
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.

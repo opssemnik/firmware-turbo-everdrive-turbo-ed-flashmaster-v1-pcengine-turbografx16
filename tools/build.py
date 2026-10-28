@@ -9,7 +9,7 @@ from asm import assemble
 import art
 import cart_asm
 
-MOD_VERSION = 8
+MOD_VERSION = 9
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -108,7 +108,7 @@ EXTRA = {  # new strings used by the mod's own code
 HELP = [('II', 'Abrir'), ('RUN', 'Jogar'), ('I', 'Voltar'), ('SEL', 'Tema')]  # top help line
 SPLASH_LINES = [('Turbo EverDrive OS', 2), (VERSION_STR, 11), ('', 0), ('por Antonio & The Nobre', 5),
                 ('', 0), ('Aperte um botão', 3)]
-SPLASH_FRAMES = 120      # 2 s, or until a button is pressed
+SPLASH_FRAMES = 90       # 1.5 s, or until a button is pressed
 BG_SCROLL = 240          # BAT row 30 is the top screen row: rows 30-31 hold the banner
 SPLASH_BANKS = (14, 15)  # tiles, BAT map
 STR_BASE = 0x4110  # free space in bank 3 (mapped at $4000 by the OS)
@@ -147,35 +147,24 @@ joyhook:                ; replaces "jsr joy" in the file browser's wait-for-key 
     pha
     lda #$0d
     tam #$40
-    jsr idle            ; help line, RGPOA.DAT lookup, artwork; A = key to inject
+    jsr idle            ; help line, artwork, SELECT/II handling; A = key for the OS
     tay
     pla
     tam #$40
     pla
     plx
-    cpy #$00            ; "go to game" presses keys for the user
+    cpy #$00            ; 0: the real buttons
     beq jh_real
-    tya
+    cpy #$ff            ; $ff: nothing (SELECT is handled by the mod)
+    beq jh_none
+    tya                 ; a key pressed by the mod (go to game, letter jump, II on a game)
     tax
+jh_none:
     cla
-    rts
+    cpy #$ff
+    bne jh_real
+    clx
 jh_real:
-    cpx #$04            ; SELECT and nothing else held?
-    bne .out
-    lda $222d           ; joytrg(0): newly pressed this frame
-    and #$04
-    beq .zero
-    tma #$40
-    pha
-    lda #$0d
-    tam #$40
-    jsr theme_next
-    pla
-    tam #$40
-.zero:
-    clx                 ; report "no key" so the browser keeps waiting
-    cla
-.out:
     rts
 
 cls_new:                ; cls() entry ($eda9) jumps here
@@ -406,11 +395,13 @@ def build(src, dst):
     tables += '\noffs: .db ' + ','.join(str(i * stride) for i in range(len(THEMES)))
     words = [vce(c) for t in THEMES for c in theme_colors(t)]
     tables += '\ncolors: .dw ' + ','.join(str(w) for w in words)
-    tables += '\nban_pal: .dw ' + ','.join(str(art.vce(c)) for c in art.BANNER_PAL)
-    tables += '\nspl_pal: .dw ' + ','.join(str(art.vce(c)) for c in art.SPLASH_PAL)
-    tables += '\nban_map: .dw ' + ','.join(str(w) for w in ban)
-    tables += '\nhelp_map: .dw ' + ','.join(str(w) for w in help_row)
-    tables += '\nban_tiles: .db ' + ','.join(str(x) for x in ts.blob())
+    # banner/help/splash data in bank 15 after the splash map, read through MPR3 ($6000)
+    w16 = lambda ws: b''.join(bytes([w & 0xff, w >> 8]) for w in ws)
+    blob15 = (w16(art.vce(c) for c in art.BANNER_PAL) + w16(art.vce(c) for c in art.SPLASH_PAL)
+              + w16(ban) + w16(help_row) + ts.blob())
+    rom.put(foff(SPLASH_BANKS[1], 0x1000), blob15)
+    tsym.update({'B15_BANPAL': 0x7000, 'B15_SPLPAL': 0x7020, 'B15_BANMAP': 0x7040,
+                 'B15_HELPMAP': 0x70c0, 'B15_BANTILES': 0x7100})
     tables += cart_asm.tables(enc)
     tcode, tsym = assemble(cart_asm.BANK13 + tables, 0xc400, tsym)
     if 0xc400 + len(tcode) > 0xe000: raise SystemExit('bank 13 overflow')
@@ -429,7 +420,7 @@ def build(src, dst):
     rom.d[foff(11, 0xad55):foff(11, 0xad57)] = bytes([sym['splash_entry'] & 0xff, sym['splash_entry'] >> 8])
 
     # 6. bank 0: SELECT/help hook + cls hook; vsync IRQ scrolls the BG by BG_SCROLL
-    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('theme_next', 'idle', 'banner_draw', 'action', 'hub')})
+    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('idle', 'banner_draw', 'action', 'hub')})
     if 0xff63 + len(jcode) > 0xfff6: raise SystemExit('bank 0 hook overflow')
     rom.put(foff(0, 0xff63), jcode)
     rom.expect(foff(10, 0xa567), '20 e9 f8')

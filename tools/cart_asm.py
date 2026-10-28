@@ -113,25 +113,31 @@ GFX = """
 banner_draw:            ; cls() hook: palette 4 + tiles at VRAM $1000 + BAT rows 30-31; hide art
     php
     sei
+    tma #$08            ; graphics data lives in bank 15
+    pha
+    lda #$0f
+    tam #$08
     lda #$40
     sta VCE_A
     stz VCE_AH
-    tia ban_pal,VCE_D,32
+    tia B15_BANPAL,VCE_D,32
     st0 #$00
     st1 #$00
     st2 #$10
     st0 #$02
-    tia ban_tiles,$0002,BAN_TILES_LEN
+    tia B15_BANTILES,$0002,BAN_TILES_LEN
     st0 #$00
     st1 #$80
     st2 #$07
     st0 #$02
-    tia ban_map,$0002,64
+    tia B15_BANMAP,$0002,64
     st0 #$00
     st1 #$c0
     st2 #$07
     st0 #$02
-    tia ban_map+64,$0002,64
+    tia B15_BANMAP+64,$0002,64
+    pla
+    tam #$08
     jsr panel_hide
     lda #$ff            ; forget the selection so the art reloads after the redraw
     sta SEL
@@ -153,11 +159,17 @@ help_check:             ; draw the help line in BAT row 0 unless it is already t
     cmp #hi(HELP_PROBE)
     beq hc_done
 hc_draw:
+    tma #$08
+    pha
+    lda #$0f
+    tam #$08
     st0 #$00
     st1 #$00
     st2 #$00
     st0 #$02
-    tia help_map,$0002,64
+    tia B15_HELPMAP,$0002,64
+    pla
+    tam #$08
 hc_done:
     rts
 
@@ -172,6 +184,10 @@ idle:                   ; every frame of the browser's wait-for-key loop
 id_init_done:
     stz INJ
     jsr goto_tick
+    lda INJ
+    bne id_noinput
+    jsr input_tick
+id_noinput:
     lda FLAGS
     and #$02
     beq id_out
@@ -186,16 +202,18 @@ id_out:
 splash:                 ; boot splash: palette 5, tiles (bank 14) at VRAM $2000, BAT (bank 15)
     php
     sei
+    tma #$08
+    pha
+    lda #SPL_MAP_BANK
+    tam #$08
     lda #$50
     sta VCE_A
     stz VCE_AH
-    tia spl_pal,VCE_D,32
+    tia B15_SPLPAL,VCE_D,32
     st0 #$00
     st1 #$00
     st2 #$20
     st0 #$02
-    tma #$08
-    pha
     lda #SPL_TILE_BANK
     tam #$08
     tia $6000,$0002,SPL_TILES_LEN
@@ -1645,8 +1663,26 @@ LCUR = $2059
 LTOP = $205a
 LKIND = $205b           ; 0 favourites, 1 recents
 GSTATE = $205c          ; 0 nothing, 1 find the game in the folder just entered, 2 inject keys
-GRIGHT = $205d
-GDOWN = $205e
+GTGT = $20df           ; seek: target display index
+GRUN = $20e0           ; seek: press RUN when there
+GCOUNT = $20e1         ; seek: step limit
+SELHELD = $20e2
+SELUSED = $20e3
+LDIR = $20b8           ; letter jump temporaries (inside LINE, unused while jumping)
+LN = $20b9
+LC = $20ba
+LCH = $20bb
+LISDIR = $20bc
+DCNT = $20bd
+RS = $20be
+RE = $20bf
+BSLO = $20c0
+BSHI = $20c1
+BSKEY = $20c2
+BSMODE = $20c3
+BSMID = $20c4
+ISDIR = $20c5
+LT = $20c6
 INJ = $205f
 LIST = $2060            ; entry ids (sector * 7 + entry), up to 56
 SEQS = $2098            ; recents sort keys (u16 each); shares space with LINE
@@ -2255,7 +2291,7 @@ goto_tick:              ; called every idle frame; sets INJ
     rts
 gt_on:
     cmp #$01
-    jne gt_keys
+    jne gt_seek
     stz GSTATE
     ldx #$03            ; did the OS enter the folder?
 gt_dir:
@@ -2295,39 +2331,270 @@ gt_nx:
     bne gt_find
     rts
 gt_found:
-    txa                 ; RIGHT x (i / 20), DOWN x (i % 20), then RUN
-    ldy #$00
-gt_div:
-    cmp #20
-    bcc gt_d
-    sbc #20
-    iny
-    bra gt_div
-gt_d:
-    sty GRIGHT
-    sta GDOWN
-    lda #$02
-    sta GSTATE
-gt_keys:
-    lda GRIGHT
-    beq gt_down
-    dec GRIGHT
+    stx GTGT
+    lda #$01
+    sta GRUN
+    jmp seek_start
+gt_seek:                ; move the cursor one step towards GTGT (pages first)
+    dec GCOUNT
+    beq gt_stop
+    jsr cur_index
+    txa
+    jsr div20
+    sty TMP             ; current page
+    lda GTGT
+    jsr div20
+    cpy TMP
+    beq gt_samepage
+    bcs gt_right
+    lda #$80            ; LEFT
+    sta INJ
+    rts
+gt_right:
     lda #$20
     sta INJ
     rts
+gt_samepage:
+    jsr cur_index
+    cpx GTGT
+    beq gt_there
+    bcc gt_down
+    lda #$10            ; UP
+    sta INJ
+    rts
 gt_down:
-    lda GDOWN
-    beq gt_run
-    dec GDOWN
     lda #$40
     sta INJ
     rts
-gt_run:
-    stz GSTATE
-    lda #$08
+gt_there:
+    lda GRUN
+    beq gt_stop
+    lda #$08            ; RUN: open the game screen
     sta INJ
+gt_stop:
+    stz GSTATE
 gt_ret:
     rts
+
+seek_start:             ; GTGT set: start moving the cursor
+    lda #$02
+    sta GSTATE
+    lda #200
+    sta GCOUNT
+    rts
+
+div20:                  ; A -> Y = A / 20, A = A % 20
+    ldy #$00
+dv_l:
+    cmp #20
+    bcc dv_r
+    sbc #20
+    iny
+    bra dv_l
+dv_r:
+    rts
+
+cur_index:              ; browser cursor (index local; the joy() call pushed 2 bytes) -> X
+    ldy #$10
+    lda [$00],y
+    tax
+    rts
+
+; ---------------------------------------------------------------- SELECT (themes on release, letters with a direction), II on a game
+input_tick:
+    lda $2228           ; held buttons
+    and #$04
+    beq it_nosel
+    lda #$ff            ; the OS never sees SELECT
+    sta INJ
+    lda #$01
+    sta SELHELD
+    lda $222d
+    bit #$90            ; LEFT or UP: previous letter
+    bne it_prev
+    bit #$60            ; RIGHT or DOWN: next letter
+    bne it_next
+    rts
+it_prev:
+    sta SELUSED
+    cla
+    jmp letter_jump
+it_next:
+    sta SELUSED
+    lda #$01
+    jmp letter_jump
+it_nosel:
+    lda SELHELD
+    beq it_ii
+    stz SELHELD
+    lda SELUSED
+    stz SELUSED
+    bne it_ii
+    jsr theme_next      ; SELECT released without a direction
+it_ii:
+    lda $222d           ; II alone on a game: open the game screen like RUN
+    cmp #$02
+    bne it_ret
+    lda $2228
+    cmp #$02
+    bne it_ret
+    jsr cur_index
+    txa
+    jsr entry_info
+    lda ISDIR
+    bne it_ret
+    lda #$08
+    sta INJ
+it_ret:
+    rts
+
+entry_info:             ; A = display index -> A = first letter (upper case), ISDIR
+    tax
+    cla
+    jsr os_open
+    stz ISDIR
+    lda $3b68           ; folders have size 0
+    ora $3b69
+    ora $3b6a
+    ora $3b6b
+    bne ei_file
+    inc ISDIR
+ei_file:
+    lda NAMEBUF
+    cmp #$61
+    bcc ei_ret
+    cmp #$7b
+    bcs ei_ret
+    sbc #$1f            ; carry clear: -$20
+ei_ret:
+    rts
+
+bsearch:                ; first index in [BSLO, BSHI) where the predicate holds -> A
+bs_loop:
+    lda BSLO
+    cmp BSHI
+    bcs bs_done
+    clc
+    adc BSHI
+    ror a
+    sta BSMID
+    jsr entry_info
+    ldx BSMODE
+    beq bs_gt
+    dex
+    beq bs_ge
+    lda ISDIR           ; mode 2: is a file
+    beq bs_true
+    bra bs_false
+bs_gt:
+    cmp BSKEY
+    beq bs_false
+    bcs bs_true
+    bra bs_false
+bs_ge:
+    cmp BSKEY
+    bcs bs_true
+bs_false:
+    lda BSMID
+    inc a
+    sta BSLO
+    bra bs_loop
+bs_true:
+    lda BSMID
+    sta BSHI
+    bra bs_loop
+bs_done:
+    lda BSLO
+    rts
+
+letter_jump:            ; A = 1 next letter, 0 previous letter (the list is sorted, case-insensitive)
+    sta LDIR
+    lda $3a62           ; number of entries (the OS shows at most 224)
+    ldx $3a63
+    beq lj_n
+    lda #224
+lj_n:
+    sta LN
+    cmp #$00
+    bne lj_go
+    rts
+lj_go:
+    jsr cur_index
+    stx LC
+    txa
+    jsr entry_info
+    sta LCH
+    lda ISDIR
+    sta LISDIR
+    stz BSLO            ; folders come first: D = first file
+    lda LN
+    sta BSHI
+    lda #$02
+    sta BSMODE
+    jsr bsearch
+    sta DCNT
+    lda LISDIR          ; search inside the current group (folders or files)
+    beq lj_files
+    stz RS
+    lda DCNT
+    sta RE
+    bra lj_dir
+lj_files:
+    lda DCNT
+    sta RS
+    lda LN
+    sta RE
+lj_dir:
+    lda LDIR
+    beq lj_prev
+    lda LC              ; next: first entry after LC whose letter is greater
+    inc a
+    sta BSLO
+    lda RE
+    sta BSHI
+    lda LCH
+    sta BSKEY
+    stz BSMODE
+    jsr bsearch
+    cmp RE
+    bcc lj_set
+    lda RS              ; past the end: wrap to the first entry
+    bra lj_set
+lj_prev:
+    lda RS              ; g = first entry of the current letter
+    sta BSLO
+    lda LC
+    sta BSHI
+    lda LCH
+    sta BSKEY
+    lda #$01
+    sta BSMODE
+    jsr bsearch
+    cmp LC
+    bcc lj_set          ; not at the start of the letter yet: go there
+    cmp RS
+    bne lj_before
+    lda RE              ; already at the first letter: wrap to the last letter
+    dec a
+    bra lj_key
+lj_before:
+    dec a               ; letter of the entry just before this group
+lj_key:
+    sta LT
+    jsr entry_info
+    sta BSKEY
+    lda RS
+    sta BSLO
+    lda LT
+    inc a
+    sta BSHI
+    lda #$01
+    sta BSMODE
+    jsr bsearch
+lj_set:
+    sta GTGT
+    stz GRUN
+    jmp seek_start
 
 dir_ordinal:            ; scan CURDIR for GFILE, counting entries the way the OS numbers them
     stz ORD

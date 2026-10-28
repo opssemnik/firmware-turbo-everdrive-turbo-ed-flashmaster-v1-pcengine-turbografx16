@@ -1,5 +1,13 @@
 # Histórico
 
+## PT-BR v9
+- **II num jogo** abre a tela do jogo (antes só o RUN abria).
+- **Pular para uma letra:** SELECT + →/↓ (próxima) e SELECT + ←/↑ (anterior).
+- O tema agora troca ao **soltar** o SELECT (para não conflitar com o pulo de letra).
+- Splash de 1,5 segundo.
+- Banner, ícones e paletas movidos do banco 13 para o banco 15 (espaço para novas funções).
+- `RGPOA.DAT` continua no formato v3: favoritos, recentes e tema são mantidos.
+
 ## PT-BR v8
 - **Menu** no botão I da raiz: Favoritos, Recentes e Sobre.
 - **Listas de favoritos e recentes** (recentes do mais novo para o mais antigo). Escolher um jogo faz o OS entrar na pasta dele, leva o cursor até o jogo e abre a tela do jogo.
