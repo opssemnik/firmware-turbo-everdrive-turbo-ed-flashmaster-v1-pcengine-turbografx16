@@ -141,12 +141,21 @@ MINI = {  # 3x5 letters for the pill buttons
 }
 
 
+def outline(c):
+    """Dark 1px border on the shape's edge, so the icons read on light themes too."""
+    inside = lambda x, y: 0 <= x < c.w and 0 <= y < c.h and c.p[y][x] != 0
+    edge = [(x, y) for y in range(c.h) for x in range(c.w) if inside(x, y)
+            and not all(inside(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+    for x, y in edge: c.set(x, y, 14)
+
+
 def icon_round(label):
     c = Canvas(8, 8, 0)
     rows = ['..###...', '.#####..', '#######.', '#######.', '#######.', '.#####..', '..###...', '........']
     for y, r in enumerate(rows):
         for x, ch in enumerate(r):
             if ch == '#': c.set(x, y, 12)
+    outline(c)
     cols = [3] if label == 'I' else [2, 4]
     for x in cols:
         for y in (2, 3, 4): c.set(x, y, 14)
@@ -156,6 +165,7 @@ def icon_round(label):
 def icon_pill(word):
     c = Canvas(16, 8, 0)
     c.rect(1, 0, 13, 7, 13); c.rect(0, 1, 15, 5, 13)
+    outline(c)
     for i, ch in enumerate(word):
         for y, r in enumerate(MINI[ch]):
             for x, b in enumerate(r):

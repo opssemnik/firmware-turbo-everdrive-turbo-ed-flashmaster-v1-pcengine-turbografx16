@@ -1,5 +1,8 @@
 # Histórico
 
+## PT-BR v5
+- Ícones dos botões na linha de ajuda com contorno escuro: agora aparecem também no tema Papel (fundo claro).
+
 ## PT-BR v4
 - Splash de 3 segundos (antes 4).
 - `RGPOA.DAT` agora cobre o acervo `GAMES_PCENGINE` e jogos de SuperGrafx (`.sgx`): 2.372 nomes com capa.
