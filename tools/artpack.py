@@ -1,15 +1,17 @@
 """Build RGPOA.DAT (theme save + game artwork) for the SD card root.
 
 usage: python artpack.py [--keep OLD.DAT] [out_file]
-  --keep copies the saved theme, favourites and recents from an existing RGPOA.DAT.
+  --keep copies the saved theme, language, favourites and recents from an existing RGPOA.DAT.
 
 Layout v3 (512-byte sectors, offsets relative to the file start):
   sector 0      header: magic[16] "RGPOA-DAT-v3", theme(1), nbuckets(1), version(1)
   1..8          favourites, 9..10 recents: "RGPOA-SLOT" kind('F'/'R') rel_sector 0 0 0 0,
                 then 7 entries x 64 bytes: dir cluster u32 (0 = empty), seq u16, file cluster u32, name[54]
-  header byte 19 = number of themes, bytes 20-23 = sector of the theme table (0 = built-in themes)
+  header byte 19 = number of themes, bytes 20-23 = sector of the theme table (0 = built-in themes),
+                byte 24 = language (0 Portuguese, 1 English; written by the cart)
   theme table   32 bytes per theme: 9 colours (u16, VCE format, slot order of build.SLOTS),
-                banner sector u32 (0 = default banner), splash sector u32 (0 = default), name[6]
+                banner sector u32 (0 = default banner), splash sector u32 (0 = default),
+                English splash sector u32 (0 = same as the Portuguese one, always < 65536), name[2]
   splash        sector 0: palette (16 x u16) + tile sector count (u16 at byte 32);
                 8 sectors: BAT (32 rows x 64 words, palette 5, tiles $200+, already in scroll order);
                 then the tiles (4bpp, VRAM order)
@@ -137,7 +139,12 @@ def theme_section(first_sector):
         if t.get('splash'):
             struct.pack_into('<I', table, i * 32 + 22, first_sector + ntab + len(blocks) // 512)
             blocks += splash_block(os.path.join(SPLASHES, t['splash']))
-        table[i * 32 + 26:i * 32 + 32] = t['name'].encode('latin-1', 'replace')[:6].ljust(6, b'\0')
+        if t.get('splash_en'):     # English splash (0 = the same as the Portuguese one)
+            sec = first_sector + ntab + len(blocks) // 512
+            assert sec < 0x10000    # the cart tells it apart from older .dat files (name bytes) this way
+            struct.pack_into('<I', table, i * 32 + 26, sec)
+            blocks += splash_block(os.path.join(SPLASHES, t['splash_en']))
+        table[i * 32 + 30:i * 32 + 32] = t['name'].encode('latin-1', 'replace')[:2].ljust(2, b'\0')
     return bytes(table) + blocks, len(themes)
 
 
@@ -180,13 +187,15 @@ def build(sd, out, theme=0, keep=None):
     slots += [slot_sector('R', REC_BASE + i) for i in range(REC_SECTORS)]
     if keep:
         old = open(keep, 'rb').read()
-        if old[:11] == b'RGPOA-DAT-v': theme = old[16]
+        lang = 0
+        if old[:11] == b'RGPOA-DAT-v': theme = old[16]; lang = old[24] & 1
         same = old[:12] == MAGIC[:12]  # slot entries changed format in v3
         if same:
             slots = [bytearray(old[(1 + i) * 512:(2 + i) * 512]) for i in range(len(slots))]
-        print('kept from %s: theme %d%s' % (keep, theme, ', favourites + recents' if same else ''))
+        print('kept from %s: theme %d, language %d%s' % (keep, theme, lang, ', favourites + recents' if same else ''))
     data = bytearray()
     hdr = bytearray(512); hdr[:16] = MAGIC; hdr[16] = theme; hdr[17] = nb; hdr[18] = 3
+    hdr[24] = lang if keep else 0
     data += hdr
     for sec in slots: data += sec
     for b in buckets:

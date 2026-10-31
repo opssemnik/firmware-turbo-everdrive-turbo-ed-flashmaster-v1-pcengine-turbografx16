@@ -224,7 +224,8 @@ sp_rom:
     st0 #$02
     lda #SPL_TILE_BANK
     tam #$08
-    tia $6000,$0002,SPL_TILES_LEN
+    tia SPL_TILES_AT,$0002,SPL_TILES_LEN
+    tia SPL_TILES2_AT,$0002,SPL_TILES2_LEN    ; the rest, in bank 12 (always mapped)
     lda #SPL_MAP_BANK
     tam #$08
     st0 #$00
@@ -232,6 +233,11 @@ sp_rom:
     st2 #$00
     st0 #$02
     tia $6000,$0002,4096
+    st0 #$00            ; rows with text: this language's (string bank)
+    st1 #lo(SPL_ROW0 * 64)
+    st2 #hi(SPL_ROW0 * 64)
+    st0 #$02
+    tia STR_SPLROWS,$0002,SPL_ROWS_LEN
     pla
     tam #$08
 sp_shown:
@@ -661,6 +667,9 @@ di_found:
     sta TTAB+2
     lda $0003
     sta TTAB+3
+    lda $0002           ; word 12: language
+    and #$01
+    jsr lang_set
     jsr theme_cur       ; saves the stock bar colour on first use
     jsr theme_count
     sta TMP
@@ -796,24 +805,34 @@ ws_bad:
     sec
     rts
 
+dat_save_lang:          ; current language -> byte 24 of sector 0
+    jsr lang_cur
+    tax
+    ldy #12
+    bra ds_word
 dat_save_theme:         ; X = theme -> byte 16 of sector 0
+    ldy #8
+ds_word:                ; X -> low byte of header word Y (the high byte is kept)
     lda FLAGS
     and #$02
     bne ds_ok1
     rts
 ds_ok1:
     stx R2
+    phy
     jsr check_header    ; re-read and verify right before writing (LBA = DAT)
+    ply
     bcc ds_ok2
     rts
 ds_ok2:
-    ldx #lo(SCR+8)
+    sty R               ; SCR is $7c00: word Y is at $7c00 + Y
+    ldx R
     lda #hi(SCR)
     jsr vram_r
     lda $0002
     lda $0003
-    sta TMP             ; keep the bucket count byte
-    ldx #lo(SCR+8)
+    sta TMP
+    ldx R
     lda #hi(SCR)
     jsr vram_w
     lda R2
@@ -821,6 +840,18 @@ ds_ok2:
     lda TMP
     sta $0003
     jmp write_scr
+
+lang_cur:               ; -> A = 0 Portuguese, 1 English (the string bank mapped at $4000)
+    tma #$04
+    cmp #STRBANK_EN
+    cla
+    rol a
+    rts
+lang_set:               ; A = 0/1 -> map that language's string bank at $4000
+    tax
+    lda strbanks,x
+    tam #$04
+    rts
 
 ; ---------------------------------------------------------------- artwork
 sel_hash:               ; H = hash of the name in the bottom bar (BAT rows 24-25)
@@ -1043,12 +1074,11 @@ def tables(enc):
     t += '\nslot_magic: .db "RGPOA-SLOT"'
     t += '\nopt_row: .db 5,8,11'
     t += '\nopt_tab: .dw s_load,s_fav,s_back,s_unfav'
-    t += '\nhub_row: .db 5,8,11,14'
-    t += '\nhub_tab: .dw s_mfav,s_mrec,s_msearch,s_mabout'
+    t += '\nhub_row: .db 5,8,11,14,17'
+    t += '\nhub_tab: .dw s_mfav,s_mrec,s_msearch,s_mabout,s_mlang'
     t += '\ntitle_tab: .dw s_tfav,s_trec'
-    for name, text in MENU_STRINGS.items():
-        t += '\n%s: .db %s' % (name, db(enc(text)))
-    return t
+    t += '\nstrbanks: .db STRBANK_PT,STRBANK_EN'
+    return t        # the strings themselves live in the string banks (build.py)
 
 
 MENU_STRINGS = {  # padded so a shorter text erases a longer one
@@ -1073,6 +1103,31 @@ MENU_STRINGS = {  # padded so a shorter text erases a longer one
     's_trec':    'Recentes ',
     's_empty':   'Nenhum jogo nesta lista.',
     's_hint_list': 'RUN/II: ir ao jogo  I: menu  ',
+    's_mlang':   '  Idioma: Português',
+}
+MENU_STRINGS_EN = {
+    's_load':    '  Load            ',
+    's_fav':     '  Add to favorites',
+    's_unfav':   '  Remove favorite ',
+    's_back':    '  Back            ',
+    's_cur':     '>',
+    's_hint':    'RUN/II:ok  I:back  <>:other  ',
+    's_added':   'Added to favorites!           ',
+    's_removed': 'Removed from favorites.       ',
+    's_full':    'Favorites full (56).          ',
+    's_err':     'Error writing to the SD card. ',
+    's_nodat':   'RGPOA.DAT needed on the SD.   ',
+    's_menu':    'Menu',
+    's_mfav':    '  Favorites',
+    's_mrec':    '  Recent   ',
+    's_mabout':  '  About    ',
+    's_msearch': '  Search   ',
+    's_hint_menu': 'RUN/II: open     I: back     ',
+    's_tfav':    'Favorites',
+    's_trec':    'Recent   ',
+    's_empty':   'No games in this list.',
+    's_hint_list': 'RUN/II: go to game  I: menu  ',
+    's_mlang':   '  Language: English',
 }
 
 
@@ -1814,7 +1869,7 @@ hub_loop:
 hub_up:
     lda HCUR
     bne hub_up1
-    lda #$04
+    lda #$05
 hub_up1:
     dec a
     sta HCUR
@@ -1822,7 +1877,7 @@ hub_up1:
 hub_dn:
     lda HCUR
     inc a
-    cmp #$04
+    cmp #$05
     bcc hub_dn1
     cla
 hub_dn1:
@@ -1836,6 +1891,8 @@ hub_upd:
     bra hub_loop
 hub_ok:
     lda HCUR
+    cmp #$04
+    beq hub_lang
     cmp #$03
     beq hub_about
     cmp #$02
@@ -1879,6 +1936,16 @@ hub_back:
     jsr $eda9
     cla
     rts
+hub_lang:               ; Idioma / Language: switch the string bank and save the choice
+    jsr lang_cur
+    eor #$01
+    jsr lang_set
+    sei
+    jsr dat_save_lang
+    lda <$f7
+    sta $0000
+    cli
+    jmp hub_redraw
 
 hub_draw:
     lda #30
@@ -1928,7 +1995,7 @@ hd_put:
 hd_next:
     inc ADI
     lda ADI
-    cmp #$04
+    cmp #$05
     bne hd_opt
     lda #lo(s_hint_menu)
     sta T
@@ -2742,6 +2809,31 @@ td_sp:
     inx
     cpx #$04
     bne td_sp
+    jsr lang_cur        ; English: bytes 26-29 = its own splash (0 = the same one)
+    beq td_spl
+    ldx #$00
+td_spe:
+    lda $0002
+    sta ARG,x
+    inx
+    lda $0003
+    sta ARG,x
+    inx
+    cpx #$04
+    bne td_spe
+    lda ARG+2           ; a sector of the file is < 65536; older .dat files keep the theme
+    ora ARG+3           ; name here (letters), so they fail this test and keep their splash
+    bne td_spl
+    lda ARG
+    ora ARG+1
+    beq td_spl
+    ldx #$03
+td_spc:
+    lda ARG,x
+    sta SPLSEC,x
+    dex
+    bpl td_spc
+td_spl:
     stz BANCUST
     lda T+3
     ora T

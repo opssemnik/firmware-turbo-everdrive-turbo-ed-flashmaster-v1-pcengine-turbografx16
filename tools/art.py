@@ -187,15 +187,16 @@ def build_banner(font, enc, title='RETROGAMER POA'):
     return ts, ban, icons, can
 
 
-def help_line(icons, enc, items, text_pal=1, cols=32):
-    """items: [(icon, word)] -> 32 BAT words for row 0 (font tiles = $80 + code - $20)."""
+def help_line(icons, enc, items, text_pal=1, cols=32, pad=None):
+    """items: [(icon, word)] -> 32 BAT words for row 0 (font tiles = $80 + code - $20).
+    pad = left margin (default: centred)."""
     cells = []
     for i, (ic, word) in enumerate(items):
         if i: cells.append(None)
         cells += icons[ic]
         cells += [(text_pal << 12) | (0x80 + ch - 0x20) for ch in enc(word)[:-1]]
     space = 0x80
-    pad = (cols - len(cells)) // 2
+    if pad is None: pad = (cols - len(cells)) // 2
     row = [space] * pad + [space if c is None else c for c in cells]
     assert len(row) <= cols, 'help line too long: %d' % len(row)
     return row + [space] * (cols - len(row))
@@ -223,8 +224,9 @@ SPLASH_PAL = [
 ]
 
 
-def build_splash(font, enc, lines, title='RETROGAMER', sub='POA'):
-    """lines: [(text, colour_index)] drawn small under the logo. -> (TileSet, bat 32x64 words, canvas)"""
+def build_splash(font, enc, lines, title='RETROGAMER', sub='POA', ts=None):
+    """lines: [(text, colour_index)] drawn small under the logo. -> (TileSet, bat 32x64 words, canvas)
+    Pass the TileSet of another language's splash as ts to share its tiles."""
     c = Canvas(256, 224, 1)
     import random
     rnd = random.Random(7)
@@ -248,7 +250,7 @@ def build_splash(font, enc, lines, title='RETROGAMER', sub='POA'):
             e = enc(text)[:-1]
             c.text(font, e, centred_text_x(len(e)), y, 1, colr)
         y += 12
-    ts = TileSet(0x200)
+    ts = ts or TileSet(0x200)
     tl = c.tiles()
     # screen row r shows BAT row (r + 30) % 32 because the mod scrolls the BG 16px
     blank = (SPLASH_PAL_NO << 12) | 0x200

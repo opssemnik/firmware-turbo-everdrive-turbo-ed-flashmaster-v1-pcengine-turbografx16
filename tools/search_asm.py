@@ -893,16 +893,28 @@ def tables(enc):
     t += '\next_sgx: .db "SGX"'
     t += '\nact_col: .db 3,13,23'
     t += '\nact_tab: .dw s_space,s_bksp,s_find'
-    for name, text in {
-        's_title': 'Buscar jogo',
-        's_space': 'Espaço',
-        's_bksp': 'Apagar',
-        's_find': 'Buscar',
-        's_khint': 'II: tecla  I: apaga  RUN: busca',
-        's_busy': 'Buscando no cartão...',
-        's_rtitle': 'Resultados: ',
-        's_none': 'Nenhum jogo encontrado.',
-        's_rhint': 'RUN/II: ir ao jogo  I: voltar',
-    }.items():
-        t += '\n%s: .db %s' % (name, db(enc(text)))
-    return t
+    return t        # the strings live in the string banks (build.py)
+
+
+STRINGS = {
+    's_title': 'Buscar jogo',
+    's_space': 'Espaço',
+    's_bksp': 'Apagar',
+    's_find': 'Buscar',
+    's_khint': 'II: tecla  I: apaga  RUN: busca',
+    's_busy': 'Buscando no cartão...',
+    's_rtitle': 'Resultados: ',
+    's_none': 'Nenhum jogo encontrado.',
+    's_rhint': 'RUN/II: ir ao jogo  I: voltar',
+}
+STRINGS_EN = {
+    's_title': 'Search game',
+    's_space': 'Space',
+    's_bksp': 'Delete',
+    's_find': 'Search',
+    's_khint': 'II: key  I: delete  RUN: search',
+    's_busy': 'Searching the card...',
+    's_rtitle': 'Results: ',
+    's_none': 'No game found.',
+    's_rhint': 'RUN/II: go to game  I: back',
+}

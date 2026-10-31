@@ -178,6 +178,13 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - `game_nav` usa as variáveis locais do navegador: índice (`sp+$0E`), linha (`sp+$09`) e início da página (`sp+$0B`). Também usa o total de itens (`$3A62`, máximo 224).
 - Abre o item vizinho com `open()` do OS; se for pasta (tamanho 0), não anda e reabre o item atual. Se for arquivo, atualiza as três variáveis, o cluster do arquivo, a capa (hash calculado do nome em `$3A64`) e o estado de favorito, e redesenha a tela. "Carregar" e "Voltar" passam a usar o jogo novo.
 
+### Idiomas (v18)
+- Todo texto que o OS ou o mod imprime fica num **banco de textos** mapeado em `$4000` (MPR2): banco 3 = português, banco 14 = inglês, **nos mesmos endereços**. O idioma é só qual dos dois está mapeado; não há variável de idioma (`lang_cur` lê o MPR2 com `tma #$04`).
+- O OS só põe 3 no MPR2 uma vez, no boot (`$E1F3`); as funções do banco 1 que mexem no MPR2 devolvem o valor salvo na pilha. Assim a troca vale até o próximo reset.
+- Layout dos dois bancos: `$4000`–`$410F` = strings originais (em inglês nos dois); `$4110+` = slots com o mesmo endereço nos dois bancos, cada um do tamanho do maior dos dois textos: traduções do OS, strings do mod (menu, tela do jogo, busca), a linha de ajuda (64 bytes) e as linhas de texto da splash padrão. Textos centralizados usam um único x e o mais curto ganha espaços à esquerda.
+- A splash padrão tem os tiles dos dois idiomas num conjunto só (parte no banco 14 depois dos textos, o resto no banco 12 em `$9000`); o mapa do banco 15 é o português, e as linhas que mudam são copiadas do banco de textos por cima.
+- `RGPOA.DAT`: byte 24 do setor 0 = idioma (0 português, 1 inglês), lido no `dat_init` antes do tema e gravado pela opção do menu (`dat_save_lang`, mesma rotina de "ler, conferir a assinatura, mudar uma word, gravar" do tema). Na tabela de temas, bytes 26–29 = setor da splash em inglês (0 = usa a mesma). Um setor do arquivo é sempre < 65536; `.dat` antigos têm o nome do tema nesses bytes (letras), então o OS só usa o valor se os 2 bytes altos forem 0.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.
@@ -204,6 +211,6 @@ Setores de 512 bytes, contados a partir do início do arquivo.
 | `tools/cart_asm.py` | código do banco 13 |
 | `tools/art.py` | banner, ícones dos botões, linha de ajuda, splash (arte original) |
 | `tools/scrape.py`, `tools/artconv.py`, `tools/artpack.py` | scraper, conversão para 96×128/15 cores, gerador do `RGPOA.DAT` |
-| `tools/machine.py`, `tools/cpu.py` | emulador headless (HuC6280, VDC/VCE, sprites, joypad, SD em SPI sobre uma imagem de cartão; gravações vão para um overlay em memória) |
+| `tools/machine.py`, `tools/cpu.py` | emulador headless (HuC6280, VDC/VCE, sprites, joypad, SD em SPI sobre uma imagem de cartão; gravações vão para um overlay em memória). Quando o OS está parado no laço de espera do vsync (`$FAA5`, com A igual ao contador `$2241`), o emulador avança direto até o fim da linha em vez de executar o laço, e soma as voltas no contador `$2743`; o resultado na tela é idêntico e os testes ficam ~8× mais rápidos (`fast_idle = False` desliga) |
 | `tools/fatinject.py` | coloca um arquivo na raiz do cartão emulado (só em memória) |
 | `tools/test_mod.py`, `tools/test_v3.py`, `tools/screenshots.py` | testes e capturas |

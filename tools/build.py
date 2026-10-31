@@ -12,8 +12,9 @@ import search_asm
 import loader_asm
 import extra_asm
 
-MOD_VERSION = 17
+MOD_VERSION = 18
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
+VERSION_STR_EN = 'EN v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -85,7 +86,12 @@ def make_glyphs(font):
     return bytes(out).ljust(32 * 8, b'\0')
 
 # ---------------------------------------------------------------- strings
-# (stock address, new text, centre?) ; centre=True re-centres the fixed x coordinate
+# Two languages. Every string the OS or the mod prints lives in a "string bank" mapped at $4000
+# (MPR2): bank 3 holds Portuguese, bank 14 English, at the same addresses. The language is
+# simply which of the two is mapped; the menu switches it and RGPOA.DAT byte 24 remembers it.
+STRBANK_PT, STRBANK_EN = 3, 14
+# (stock address, new text, centre?) ; centre=True re-centres the fixed x coordinate.
+# The English text is the stock string at that address.
 TRANSLATE = [
     (0x4000, 'Atualizando o SO...', True),
     (0x400d, 'NÃO DESLIGUE O CONSOLE', True),
@@ -102,14 +108,17 @@ TRANSLATE = [
     (0x40e1, 'Hora Compil. :', False),
     (0x4102, 'ERRO:  ', False),
 ]
-EXTRA = {  # new strings used by the mod's own code
-    'str_ver': VERSION_STR,
-    'str_c1': 'Mod: Retrogamer POA',
-    'str_c2': 'por Antonio & The Nobre',
+EXTRA = {  # new strings used by the mod's own code: (Portuguese, English)
+    'str_ver': (VERSION_STR, VERSION_STR_EN),
+    'str_c1': ('Mod: Retrogamer POA', 'Mod: Retrogamer POA'),
+    'str_c2': ('por Antonio & The Nobre', 'by Antonio & The Nobre'),
 }
 HELP = [('II', 'Abrir'), ('RUN', 'Jogar'), ('I', 'Voltar'), ('SEL', 'Tema')]  # top help line
+HELP_EN = [('II', 'Open'), ('RUN', 'Play'), ('I', 'Back'), ('SEL', 'Theme')]
 SPLASH_LINES = [('Turbo EverDrive OS', 2), (VERSION_STR, 11), ('', 0), ('por Antonio & The Nobre', 5),
                 ('', 0), ('Aperte um botão', 3)]
+SPLASH_LINES_EN = [('Turbo EverDrive OS', 2), (VERSION_STR_EN, 11), ('', 0), ('by Antonio & The Nobre', 5),
+                   ('', 0), ('Press a button', 3)]
 SPLASH_FRAMES = 120      # 2 s, or until a button is pressed
 BG_SCROLL = 240          # BAT row 30 is the top screen row: rows 30-31 hold the banner
 SPLASH_BANKS = (14, 15)  # tiles, BAT map
@@ -372,58 +381,107 @@ def build(src, dst):
         rom.d[site + 1] = 13
         rom.d[site + 5] = 0x80
 
-    # 2. strings
-    sym = {}
-    pool = bytearray(); addr = STR_BASE
+    # 2. graphics: banner/icons (bank 13), splash (banks 14-15), both languages
+    font128 = bytes(rom.d[foff(13, 0):foff(13, 0) + 0x400])
+    ts, ban, icons, ban_can = art.build_banner(font128, enc)
+    help_row = art.help_line(icons, enc, HELP)
+    pad = next(i for i, w in enumerate(help_row) if w != 0x80)   # same left margin: same probe icon
+    help_row_en = art.help_line(icons, enc, HELP_EN, pad=pad)
+    probe_col = next(i for i, w in enumerate(help_row) if w >> 12 == art.BANNER_PAL_NO)
+    assert help_row_en[probe_col] == help_row[probe_col], 'help lines must share the probe icon'
+    sts, sbat, spl_can = art.build_splash(font128, enc, SPLASH_LINES)
+    _, sbat_en, spl_can_en = art.build_splash(font128, enc, SPLASH_LINES_EN, ts=sts)
+    spl_tiles = sts.blob()
+    diff = [r for r in range(32) if sbat[r] != sbat_en[r]]   # BAT rows whose text differs
+    row0, row1 = min(diff), max(diff)
+    w16 = lambda ws: b''.join(bytes([w & 0xff, w >> 8]) for w in ws)
+    rom.put(foff(SPLASH_BANKS[1], 0), w16(w for row in sbat for w in row))
+    ban_can.png(os.path.join(os.path.dirname(dst), 'art_banner.png'), art.BANNER_PAL, 3)
+    spl_can.png(os.path.join(os.path.dirname(dst), 'art_splash.png'), art.SPLASH_PAL, 2)
+    spl_can_en.png(os.path.join(os.path.dirname(dst), 'art_splash_en.png'), art.SPLASH_PAL, 2)
+
+    # 3. string banks: stock strings ($4000-$410f, English in both banks) + a pool of slots with the
+    # same address in both banks, each as long as the longer of its two texts
+    entries = []                    # (symbol or None, Portuguese bytes, English bytes)
     newaddr = {}
-    for old, text, _ in TRANSLATE:
-        if text not in newaddr:
-            newaddr[text] = addr + len(pool); pool += enc(text)
-    for name, text in EXTRA.items():
-        sym[name] = addr + len(pool); pool += enc(text)
-    rom.put(foff(3, STR_BASE), bytes(pool))
+    def stock_text(a):
+        o = foff(3, a); e = data.index(0, o)
+        return data[o:e].decode('latin-1')
+    tr_x = {}
+    for old, text, centre in TRANSLATE:
+        if text in newaddr: continue
+        en = stock_text(old)
+        if centre:                  # one x for both: pad the shorter text so both stay centred
+            n = max(len(text), len(en))
+            tr_x[text] = (SCREEN_COLS - n) // 2
+            text_p = ' ' * ((n - len(text)) // 2) + text
+            en = ' ' * ((n - len(en)) // 2) + en
+        else:
+            text_p = text
+        newaddr[text] = len(entries)
+        entries.append((None, enc(text_p), enc(en)))
+    for name, (pt, en) in EXTRA.items():
+        entries.append((name, enc(pt), enc(en)))
+    for pt_d, en_d in ((cart_asm.MENU_STRINGS, cart_asm.MENU_STRINGS_EN), (search_asm.STRINGS, search_asm.STRINGS_EN)):
+        assert set(pt_d) == set(en_d)
+        for name in pt_d:
+            entries.append((name, enc(pt_d[name]), enc(en_d[name])))
+    entries.append(('str_help', w16(help_row), w16(help_row_en)))
+    entries.append(('str_splrows', w16(w for r in range(row0, row1 + 1) for w in sbat[r]),
+                    w16(w for r in range(row0, row1 + 1) for w in sbat_en[r])))
+    pool_pt, pool_en, sym, slot_addr = bytearray(), bytearray(), {}, []
+    for name, pt, en in entries:
+        n = max(len(pt), len(en))
+        a = STR_BASE + len(pool_pt)
+        slot_addr.append(a)
+        if name: sym[name] = a
+        pool_pt += pt.ljust(n, b'\0'); pool_en += en.ljust(n, b'\0')
+    rom.put(foff(STRBANK_PT, STR_BASE), bytes(pool_pt))
+    rom.put(foff(STRBANK_EN, 0x4000), data[foff(3, 0x4000):foff(3, STR_BASE)])
+    rom.put(foff(STRBANK_EN, STR_BASE), bytes(pool_en))
     for old, text, centre in TRANSLATE:
         sites = [i for i in range(len(data) - 5)
                  if data[i] == 0xa2 and data[i + 1] == old & 0xff and data[i + 2] == 0xa9
                  and data[i + 3] == old >> 8 and data[i + 4] == 0xa8]
         if len(sites) != 1: raise SystemExit('string %04x: %d refs' % (old, len(sites)))
-        i = sites[0]; new = newaddr[text]
+        i = sites[0]; new = slot_addr[newaddr[text]]
         rom.d[i + 1] = new & 0xff; rom.d[i + 3] = new >> 8
         if centre:
             rom.expect(i + 20, 'a2'); rom.expect(i + 22, 'a9 00')
-            rom.d[i + 21] = (SCREEN_COLS - len(text)) // 2
-
-    # 3. graphics: banner/icons (bank 13), splash (banks 14-15)
-    font128 = bytes(rom.d[foff(13, 0):foff(13, 0) + 0x400])
-    ts, ban, icons, ban_can = art.build_banner(font128, enc)
-    help_row = art.help_line(icons, enc, HELP)
-    probe_col = next(i for i, w in enumerate(help_row) if w >> 12 == art.BANNER_PAL_NO)
-    sts, sbat, spl_can = art.build_splash(font128, enc, SPLASH_LINES)
-    spl_tiles = sts.blob()
-    if len(spl_tiles) > BANK: raise SystemExit('splash too big: %d tiles' % len(sts.data))
-    rom.put(foff(SPLASH_BANKS[0], 0), spl_tiles)
-    rom.put(foff(SPLASH_BANKS[1], 0), b''.join(bytes([w & 0xff, w >> 8]) for row in sbat for w in row))
-    ban_can.png(os.path.join(os.path.dirname(dst), 'art_banner.png'), art.BANNER_PAL, 3)
-    spl_can.png(os.path.join(os.path.dirname(dst), 'art_splash.png'), art.SPLASH_PAL, 2)
+            rom.d[i + 21] = tr_x[text]
+    # the default splash's tiles follow the strings in the English bank; the rest goes to bank 12
+    # (always mapped at $8000), from TILES2_AT up to the build date
+    tiles_off = (STR_BASE - 0x4000 + len(pool_pt) + 31) & ~31
+    part1 = spl_tiles[:BANK - tiles_off]
+    part2 = spl_tiles[len(part1):]
+    TILES2_AT = 0x9000
+    if not part2 or TILES2_AT + len(part2) > 0x9ff0:
+        raise SystemExit('splash tiles: %d bytes do not fit' % len(spl_tiles))
+    rom.put(foff(SPLASH_BANKS[0], tiles_off), part1)
+    rom.put(foff(12, TILES2_AT), part2)
+    pool = pool_pt
 
     # 4. themes + graphics code and tables in bank 13 at $c400
     tsym = dict(cart_asm.CONSTS)
     tsym.update({'NTHEMES': len(THEMES), 'NSLOTS': len(SLOTS), 'BAN_TILES_LEN': len(ts.blob()),
             'HELP_PROBE_COL': probe_col, 'HELP_PROBE': help_row[probe_col],
             'SPL_TILES_LEN': len(spl_tiles), 'SPL_TILE_BANK': SPLASH_BANKS[0],
-            'SPL_MAP_BANK': SPLASH_BANKS[1], 'SPLASH_FRAMES': SPLASH_FRAMES})
+            'SPL_MAP_BANK': SPLASH_BANKS[1], 'SPLASH_FRAMES': SPLASH_FRAMES,
+            'SPL_TILES_AT': 0x6000 + tiles_off, 'SPL_TILES_LEN': len(part1),
+            'SPL_TILES2_AT': TILES2_AT, 'SPL_TILES2_LEN': len(part2), 'SPL_ROW0': row0, 'SPL_ROWS_LEN': (row1 - row0 + 1) * 128,
+            'STR_SPLROWS': sym['str_splrows'], 'STRBANK_PT': STRBANK_PT, 'STRBANK_EN': STRBANK_EN})
+    tsym.update(sym)
     stride = len(SLOTS) * 2
     tables = '\nslots: .db ' + ','.join(str(s) for s in SLOTS)
     tables += '\noffs: .db ' + ','.join(str(i * stride) for i in range(len(THEMES)))
     words = [vce(c) for t in THEMES for c in theme_colors(t)]
     tables += '\ncolors: .dw ' + ','.join(str(w) for w in words)
     # banner/help/splash data in bank 15 after the splash map, read through MPR3 ($6000)
-    w16 = lambda ws: b''.join(bytes([w & 0xff, w >> 8]) for w in ws)
     blob15 = (w16(art.vce(c) for c in art.BANNER_PAL) + w16(art.vce(c) for c in art.SPLASH_PAL)
               + w16(ban) + w16(help_row) + ts.blob())
     rom.put(foff(SPLASH_BANKS[1], 0x1000), blob15)
     tsym.update({'B15_BANPAL': 0x7000, 'B15_SPLPAL': 0x7020, 'B15_BANMAP': 0x7040,
-                 'B15_HELPMAP': 0x70c0, 'B15_BANTILES': 0x7100})
+                 'B15_HELPMAP': sym['str_help'], 'B15_BANTILES': 0x7100})   # help line: string bank
     tables += cart_asm.tables(enc)
     tsym.update({'SEARCH_BANK': SPLASH_BANKS[1], 'SEARCH_ENTRY': search_asm.ORG, 'GAME_NAV': extra_asm.ORG})
     # loading progress: the OS's RAM copy routine, rebuilt with a bar block per 8 KB bank

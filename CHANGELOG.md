@@ -1,5 +1,10 @@
 # Histórico
 
+## PT-BR v18
+- **Português e inglês no mesmo OS**: nova opção **Idioma / Language** no menu (I na raiz). RUN troca na hora e a escolha fica salva no `RGPOA.DAT` (byte 24); o console já liga no idioma salvo.
+- Em inglês mudam todas as telas: textos do OS original (de volta ao inglês original), menu, tela do jogo, listas, busca, Sobre, carregamento, linha de ajuda e as splashes (a padrão e as dos temas, que ganharam versão em inglês no `RGPOA.DAT`).
+- Testes ~8× mais rápidos: o emulador pula o laço em que o OS espera o próximo quadro (a bateria toda leva ~40 s).
+
 ## PT-BR v17.1 (só o RGPOA.DAT)
 - Splash do tema **Retrochimp Games**: "Grupo criado pelo Arnaldo / Itens do Japão a preços baixos / Informações no WhatsApp".
 

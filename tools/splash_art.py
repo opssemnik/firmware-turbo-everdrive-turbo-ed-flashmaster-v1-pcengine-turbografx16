@@ -61,12 +61,16 @@ def grad(cols, height):
 
 
 # ---------------------------------------------------------------- Retrogamer POA variants (the default layout, recoloured)
-def poa_variant(name, pal):
+LINES = {'': [('Turbo EverDrive OS', 2), ('PT-BR', 11), ('', 0), ('por Antonio & The Nobre', 5), ('', 0), ('Aperte um botão', 3)],
+         '_en': [('Turbo EverDrive OS', 2), ('EN', 11), ('', 0), ('by Antonio & The Nobre', 5), ('', 0), ('Press a button', 3)]}
+
+
+def poa_variant(name, pal, suffix=''):
     """Reuse the default splash drawing (art.build_splash) with a different palette."""
     stock = open(os.path.join(ROOT, 'stock', 'tos.pce'), 'rb').read()
     font = stock[0x2000:0x2300] + build.make_glyphs(stock[0x2000:0x2300])
-    lines = [('Turbo EverDrive OS', 2), ('PT-BR', 11), ('', 0), ('por Antonio & The Nobre', 5), ('', 0), ('Aperte um botão', 3)]
-    _, _, can = art.build_splash(font, build.enc, lines)
+    _, _, can = art.build_splash(font, build.enc, LINES[suffix])
+    name += suffix
     im = Image.new('RGB', (W, H))
     px = im.load()
     for y in range(H):
@@ -93,7 +97,7 @@ INVADER = ['..X.....X..', '...X...X...', '..XXXXXXX..', '.XX.XXX.XX.', 'XXXXXXXX
            'X.XXXXXXX.X', 'X.X.....X.X', '...XX.XX...']
 
 
-def retrochimp():
+def retrochimp(en=False):
     navy, cream, yel, ora, red, teal = (0, 0, 1), (7, 7, 6), (7, 6, 1), (7, 4, 1), (6, 1, 1), (0, 4, 4)
     s = S(navy)
     cx, cy, R = 128, 66, 58
@@ -113,15 +117,21 @@ def retrochimp():
     s.set(cx - 30, 167, red); s.set(cx + 29, 167, red)
     s.text('GAMES', 164, 1, navy)
     s.sprite(INVADER, 18, 162, {'X': cream}); s.sprite(INVADER, 227, 162, {'X': cream})
-    s.text('Grupo criado pelo Arnaldo', 180, 1, cream)
-    s.text('Itens do Japão a preços baixos', 190, 1, yel)
-    s.text('Informações no WhatsApp', 200, 1, (2, 6, 2))
-    s.text('Aperte um botão', 213, 1, (4, 4, 4))
-    s.save('retrochimp')
+    if en:
+        s.text('Group created by Arnaldo', 180, 1, cream)
+        s.text('Items from Japan, low prices', 190, 1, yel)
+        s.text('Info on WhatsApp', 200, 1, (2, 6, 2))
+        s.text('Press a button', 213, 1, (4, 4, 4))
+    else:
+        s.text('Grupo criado pelo Arnaldo', 180, 1, cream)
+        s.text('Itens do Japão a preços baixos', 190, 1, yel)
+        s.text('Informações no WhatsApp', 200, 1, (2, 6, 2))
+        s.text('Aperte um botão', 213, 1, (4, 4, 4))
+    s.save('retrochimp_en' if en else 'retrochimp')
 
 
 # ---------------------------------------------------------------- Maddrugamers
-def maddrugamers():
+def maddrugamers(en=False):
     black, dkg = (0, 0, 0), (0, 2, 0)
     s = S(black)
     import random
@@ -133,17 +143,18 @@ def maddrugamers():
     green = grad([(4, 7, 1), (3, 7, 1), (2, 6, 1), (1, 5, 0)], 16)
     s.text('MADDRUGAMERS', 92, 2, green, [(1, 1, (0, 3, 0)), (2, 2, dkg)])
     s.rect(24, 118, 208, 2, (1, 5, 0))
-    s.text('Canal de games retrô', 128, 1, (5, 7, 5))
+    s.text('Retro games channel' if en else 'Canal de games retrô', 128, 1, (5, 7, 5))
     s.text('PC Engine * Super Nintendo', 146, 1, (2, 6, 2))
     s.text('Mega Drive * Neo Geo * Atari', 156, 1, (2, 6, 2))
     s.text('youtube.com/@maddrugamers', 176, 1, (7, 7, 7))
-    s.text('Aperte um botão', 206, 1, (3, 3, 3))
-    s.save('maddrugamers')
+    s.text('Press a button' if en else 'Aperte um botão', 206, 1, (3, 3, 3))
+    s.save('maddrugamers_en' if en else 'maddrugamers')
 
 
 if __name__ == '__main__':
-    for name, pal in VARIANTS.items(): poa_variant(name, pal)
-    retrochimp(); maddrugamers()
+    for name, pal in VARIANTS.items():
+        poa_variant(name, pal); poa_variant(name, pal, '_en')
+    retrochimp(); maddrugamers(); retrochimp(True); maddrugamers(True)
     for f in sorted(os.listdir(OUT)):
         im = Image.open(os.path.join(OUT, f)).convert('RGB')
         print(f, len(set(im.getdata())), 'colours')

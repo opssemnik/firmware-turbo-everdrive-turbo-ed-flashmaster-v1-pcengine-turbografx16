@@ -25,9 +25,10 @@ def shot(m, name, size=None):
     return path
 
 
-def card(theme=None):
+def card(theme=None, lang=0):
     dat = bytearray(open(os.path.join(OUT, 'RGPOA.DAT'), 'rb').read())
     if theme is not None: dat[16] = theme
+    dat[24] = lang
     sd = SDCard(os.path.join(ROOT, 'sdcard_dump'))
     inject(sd, b'RGPOA   DAT', bytes(dat))
     return sd
@@ -86,13 +87,27 @@ def job_carregando(folder):
             shot(g, 'carregando'); return
 
 
-def job_splash(theme):
-    m = Machine(open(os.path.join(OUT, 'TOS.PCE'), 'rb').read(), card(theme))
+def job_splash(theme, lang=0):
+    m = Machine(open(os.path.join(OUT, 'TOS.PCE'), 'rb').read(), card(theme, lang))
     for _ in range(120):
         m.run_frames(1)
         if sum(1 for r in range(32) for c in range(32) if m.vram[r * 64 + c] >> 12 == 5) > 500: break
     m.run_frames(30)
-    return shot(m, 'splash%d' % theme, 'tmp')
+    return shot(m, 'splash%d_%d' % (theme, lang), 'tmp')
+
+
+def job_english(root):
+    m = load(root)
+    m.press('I', 3, 60)
+    for _ in range(4): m.press('DOWN', 2, 10)
+    m.press('RUN', 3, 90)                     # Idioma -> English
+    shot(m, 'menu_en')
+    m.press('I', 3, 90)
+    for k in ['DOWN', 'DOWN', 'II']: m.press(k, 3, 30)
+    m.run_frames(120)
+    for k in ['DOWN'] * 5: m.press(k, 2, 4)
+    m.press('RUN', 3, 60)
+    shot(m, 'acoes_en')
 
 
 def grid(paths, name, cols=5):
@@ -129,10 +144,13 @@ def main():
     with ProcessPoolExecutor() as ex:
         theme_jobs = [ex.submit(job_theme, folder, i) for i in range(n)]
         splash_jobs = [ex.submit(job_splash, i) for i in range(n)]
+        splash_en_jobs = [ex.submit(job_splash, i, 1) for i in range(n)]
         others = [ex.submit(job_acoes, folder), ex.submit(job_menu_sobre, root), ex.submit(job_busca, root),
+                  ex.submit(job_english, root),
                   ex.submit(job_favoritos, folder), ex.submit(job_carregando, folder)]
         grid([j.result() for j in theme_jobs], 'temas')
         grid([j.result() for j in splash_jobs], 'splashes')
+        grid([j.result() for j in splash_en_jobs], 'splashes_en')
         for j in others: j.result()
 
     bdir = os.path.join(ROOT, 'themes', 'banners')

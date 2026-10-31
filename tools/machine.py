@@ -14,6 +14,8 @@ from cpu import CPU
 CYC_LINE = 455
 LINES = 263
 VBL_LINE = 240
+IDLE_PC = 0xfaa5         # OS vsync wait loop (bank 0): inc $2743 / bne / cmp $2241 / beq
+IDLE_ITER = 18           # cycles per iteration of that loop
 
 
 class SDCard:
@@ -137,6 +139,8 @@ class Machine:
         self.erase_armed = False
         self.erase_busy = 0                    # status reads left with "flash busy"
         self.erase_reads = 0                   # per erased bank; 0 = erase finishes at once
+        self.fast_idle = True                  # skip the vsync wait loop (see run_cycles)
+        self.idle_acc = 0
         self.sd = sd
         self.flash_writes = []
         self.unk = {}
@@ -164,7 +168,7 @@ class Machine:
     def restore(blob):
         import pickle
         m = pickle.loads(blob)
-        for k, v in (('erase_armed', False), ('erase_busy', 0), ('erase_reads', 0)):
+        for k, v in (('erase_armed', False), ('erase_busy', 0), ('erase_reads', 0), ('fast_idle', True), ('idle_acc', 0)):
             m.__dict__.setdefault(k, v)          # snapshots from older emulator versions
         m.cpu.irq_pending = m._irq
         return m
@@ -338,7 +342,21 @@ class Machine:
         end = cpu.cycles + n
         while cpu.cycles < end:
             c0 = cpu.cycles
-            cpu.step()
+            if (cpu.pc == IDLE_PC and self.mpr[7] == 0 and cpu.a == self.ram[0x241] and not cpu.p & 4
+                    and self.fast_idle
+                    and not self.irq_status & ~self.irq_disable & 6 and cpu.hooks.get(IDLE_PC) is None):
+                # the OS's vsync wait spins until the IRQ bumps a counter: skip to the end of
+                # this scanline at once, counting the loop's iterations in its idle counter
+                dc = max(1, min(CYC_LINE - self.line_acc, end - c0))
+                cpu.cycles += dc
+                self.idle_acc += dc
+                it, self.idle_acc = divmod(self.idle_acc, IDLE_ITER)
+                if it:
+                    v = self.ram[0x743] | self.ram[0x744] << 8
+                    v = (v + it) & 0xffff
+                    self.ram[0x743] = v & 0xff; self.ram[0x744] = v >> 8
+            else:
+                cpu.step()
             dc = cpu.cycles - c0
             if self.timer_on:
                 self.timer_acc += dc

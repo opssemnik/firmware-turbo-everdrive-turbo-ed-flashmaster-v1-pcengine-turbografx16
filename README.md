@@ -5,7 +5,7 @@ Firmware (OS) para **EverDrive / Turbo EverDrive / Turbo ED / FlashMaster / Turb
 Site: https://pcengine.antonioscartezzini.com.br/
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v17** · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v18** · **Português e inglês** (Menu > Idioma) · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -16,7 +16,9 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 | ![Menu](docs/screenshots/menu.png) | **Interface em português** com acentos de verdade: a fonte ganhou á à â ã é ê í ó ô õ ú ç, maiúsculas, ü º ª. **Banner Retrogamer POA** no topo e **linha de ajuda** com os botões. |
 | ![Capa](docs/screenshots/capa.png) | **Capa do jogo** ao parar o cursor sobre ele. São 2.372 nomes de arquivo com capa, entre PC Engine e SuperGrafx, incluindo hacks, traduções e "Sounds". |
 | ![Ações](docs/screenshots/acoes.png) | **Tela do jogo** ao apertar RUN ou II: capa, **Carregar**, **Favoritar / Remover favorito** e **Voltar**. **← / →** passam para o jogo anterior / seguinte da pasta. Os jogos carregados entram na lista de **recentes**. |
-| ![Menu](docs/screenshots/menu_principal.png) | **Menu** (botão I na raiz): **Favoritos**, **Recentes**, **Buscar** e **Sobre**. |
+| ![Menu](docs/screenshots/menu_principal.png) | **Menu** (botão I na raiz): **Favoritos**, **Recentes**, **Buscar**, **Sobre** e **Idioma**. |
+| ![Menu em inglês](docs/screenshots/menu_en.png) | **Dois idiomas no mesmo OS**: em Menu > **Idioma**, RUN troca entre **Português** e **English** na hora. A escolha fica salva no `RGPOA.DAT` e o console já liga no idioma escolhido, inclusive a splash. |
+| ![Tela do jogo em inglês](docs/screenshots/acoes_en.png) | Em inglês, todas as telas mudam: navegador, tela do jogo, menu, listas, busca, Sobre, carregamento e a linha de ajuda. |
 | ![Favoritos](docs/screenshots/favoritos.png) | **Listas de favoritos e recentes**: escolher um jogo leva direto até ele (o OS entra na pasta, o cursor vai até o jogo e a tela do jogo abre). Favoritos e recentes ficam salvos no `RGPOA.DAT`. |
 | ![Busca](docs/screenshots/busca_teclado.png) | **Busca em todo o cartão**: digite parte do nome no teclado da tela (direcional + II, I apaga, RUN busca). O mod percorre todas as pastas do SD, sem gravar nada. |
 | ![Resultados](docs/screenshots/busca_resultados.png) | **Resultados** (até 64, ignorando maiúsculas/minúsculas): escolha um e o console vai até o jogo, como nos favoritos. |
@@ -30,6 +32,8 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 ![Banners](docs/screenshots/banners.png)
 
 ![Splashes](docs/screenshots/splashes.png)
+
+![Splashes em inglês](docs/screenshots/splashes_en.png)
 
 ### Criar seus temas e banners
 Os temas ficam no `RGPOA.DAT`, então dá para criar, editar ou remover sem regravar o firmware:
@@ -103,7 +107,7 @@ Requer Python 3 e Pillow. O OS original é baixado automaticamente do site da Kr
 
 ```
 python tools/build.py        # -> out/TOS.PCE
-python tools/run_tests.py    # todos os testes em paralelo (~2 min); ou: run_tests.py v11 v14
+python tools/run_tests.py    # todos os testes em paralelo (~40 s); ou: run_tests.py v11 v14
 python tools/test_mod.py     # emulador headless: splash, menu, sobre, temas, carregamento
 python tools/test_v3.py      # capas + salvamento do tema (precisa de uma imagem de SD em sdcard_dump)
 python tools/test_v7.py      # tela do jogo, favoritos e recentes
@@ -114,6 +118,7 @@ python tools/test_v11.py     # busca global
 python tools/test_v12.py     # barra de progresso (gravações na flash idênticas às da versão anterior)
 python tools/test_v14.py     # splash por tema e barra nas cores do tema
 python tools/test_v15.py     # ← / → na tela do jogo
+python tools/test_v18.py     # idiomas (troca, salvamento, boot em inglês, splash por idioma)
 python tools/screenshots.py  # gera docs/screenshots/
 ```
 
