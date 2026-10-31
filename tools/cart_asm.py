@@ -105,6 +105,10 @@ theme_next:             ; SELECT pressed in the browser
 tn_ok:
     phx
     jsr theme_set
+    jsr panel_hide      ; reload the cover / theme panel for the new theme
+    lda #$ff
+    sta SEL
+    stz STABLE
     plx
     jsr dat_save_theme
     lda <$f7
@@ -919,7 +923,10 @@ at_cmp:
     cmp #ART_DELAY
     bne at_ret
     jsr art_load
+    bcc at_show
+    jsr theme_panel     ; no cover: the theme's own panel, if it has one
     bcs at_ret
+at_show:
     jmp panel_show
 at_changed:
     ldx #$03
@@ -1034,6 +1041,29 @@ al_pal:
     jsr vram_w
     ldx #ART_SPR_SECTORS
     jsr read_blocks
+    rts
+
+theme_panel:            ; PANSEC (Portuguese; English = +13) -> loaded like a cover. C=1 if none
+    lda PANSEC+1        ; sector < 8192: older .dat files keep 2 letters of the name here
+    cmp #$20
+    bcs tp_none
+    ora PANSEC
+    beq tp_none
+    jsr lang_cur
+    beq tp_lang
+    lda #13             ; one art block = 13 sectors
+tp_lang:
+    clc
+    adc PANSEC
+    sta T
+    lda PANSEC+1
+    adc #$00
+    sta T+1
+    stz T+2
+    stz T+3
+    jmp al_found
+tp_none:
+    sec
     rts
 
 panel_show:
@@ -2739,6 +2769,7 @@ TCOUNT = $20e4          ; themes in RGPOA.DAT (0 = built-in)
 TTAB = $20e5            ; theme table sector (relative, 4 bytes)
 BANCUST = $20e9         ; 1 = the active theme has its own banner (tiles $140+, palette 6)
 SPLSEC = $2058          ; splash sector of the active theme (0 = default splash)
+PANSEC = $205d          ; panel sector of the active theme (u16, 0 = none)
 
 theme_count:            ; -> A = number of themes
     lda TCOUNT
@@ -2809,9 +2840,7 @@ td_sp:
     inx
     cpx #$04
     bne td_sp
-    jsr lang_cur        ; English: bytes 26-29 = its own splash (0 = the same one)
-    beq td_spl
-    ldx #$00
+    ldx #$00            ; bytes 26-29: English splash (0 = the same one)
 td_spe:
     lda $0002
     sta ARG,x
@@ -2821,6 +2850,12 @@ td_spe:
     inx
     cpx #$04
     bne td_spe
+    lda $0002           ; bytes 30-31: panel shown when there is no cover (0 = none)
+    sta PANSEC
+    lda $0003
+    sta PANSEC+1
+    jsr lang_cur
+    beq td_spl
     lda ARG+2           ; a sector of the file is < 65536; older .dat files keep the theme
     ora ARG+3           ; name here (letters), so they fail this test and keep their splash
     bne td_spl

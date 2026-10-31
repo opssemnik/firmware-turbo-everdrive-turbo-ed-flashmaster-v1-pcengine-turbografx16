@@ -12,7 +12,7 @@ import search_asm
 import loader_asm
 import extra_asm
 
-MOD_VERSION = 18
+MOD_VERSION = 19
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 VERSION_STR_EN = 'EN v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'

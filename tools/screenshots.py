@@ -96,6 +96,12 @@ def job_splash(theme, lang=0):
     return shot(m, 'splash%d_%d' % (theme, lang), 'tmp')
 
 
+def job_painel():
+    m = Machine(open(os.path.join(OUT, 'TOS.PCE'), 'rb').read(), card(1))   # Retrochimp: QR panel
+    m.run_frames(700)
+    shot(m, 'painel')
+
+
 def job_english(root):
     m = load(root)
     m.press('I', 3, 60)
@@ -146,7 +152,7 @@ def main():
         splash_jobs = [ex.submit(job_splash, i) for i in range(n)]
         splash_en_jobs = [ex.submit(job_splash, i, 1) for i in range(n)]
         others = [ex.submit(job_acoes, folder), ex.submit(job_menu_sobre, root), ex.submit(job_busca, root),
-                  ex.submit(job_english, root),
+                  ex.submit(job_english, root), ex.submit(job_painel),
                   ex.submit(job_favoritos, folder), ex.submit(job_carregando, folder)]
         grid([j.result() for j in theme_jobs], 'temas')
         grid([j.result() for j in splash_jobs], 'splashes')

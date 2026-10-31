@@ -1,5 +1,9 @@
 # Histórico
 
+## PT-BR v19
+- **Quadro do tema no navegador**: um tema pode ter uma imagem 96×128 no `RGPOA.DAT` que aparece no lugar da capa quando o item selecionado não tem capa (pastas, raiz, jogos sem capa). O **Retrochimp Games** mostra o QR code do WhatsApp do ADM e a frase do grupo, em português ou inglês conforme o idioma.
+- Ao trocar de tema com SELECT, a capa / o quadro é recarregado.
+
 ## PT-BR v18.1 (só o RGPOA.DAT)
 - Splash do tema **Retrochimp Games**: "Grupo para importação de jogos japoneses baratos! Contate o ADM no WhatsApp" + QR code do WhatsApp do ADM (português e inglês).
 

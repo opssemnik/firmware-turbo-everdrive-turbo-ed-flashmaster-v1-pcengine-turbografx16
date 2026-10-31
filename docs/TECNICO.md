@@ -185,6 +185,11 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - A splash padrão tem os tiles dos dois idiomas num conjunto só (parte no banco 14 depois dos textos, o resto no banco 12 em `$9000`); o mapa do banco 15 é o português, e as linhas que mudam são copiadas do banco de textos por cima.
 - `RGPOA.DAT`: byte 24 do setor 0 = idioma (0 português, 1 inglês), lido no `dat_init` antes do tema e gravado pela opção do menu (`dat_save_lang`, mesma rotina de "ler, conferir a assinatura, mudar uma word, gravar" do tema). Na tabela de temas, bytes 26–29 = setor da splash em inglês (0 = usa a mesma). Um setor do arquivo é sempre < 65536; `.dat` antigos têm o nome do tema nesses bytes (letras), então o OS só usa o valor se os 2 bytes altos forem 0.
 
+### Quadro do tema (v19)
+- Tabela de temas, bytes 30–31: setor (u16) de um bloco no formato de capa (13 setores: `RGA1` + paleta + 6 sprites 32×64). O bloco em inglês vem logo depois (+13).
+- No `art_tick`, quando a busca da capa falha (`art_load` com C=1), `theme_panel` carrega esse bloco com o mesmo código da capa (`al_found`) e mostra o painel. Valores ≥ 8192 são ignorados: nos `.dat` antigos esses bytes têm 2 letras do nome do tema (sempre ≥ `$2020`), e o arquivo tem bem menos de 8192 setores.
+- O setor fica em `PANSEC` (`$205D`), lido no `theme_dat`. Ao trocar de tema (`theme_next`), o painel é escondido e a seleção esquecida, para recarregar.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.

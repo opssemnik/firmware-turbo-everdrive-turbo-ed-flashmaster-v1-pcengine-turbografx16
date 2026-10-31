@@ -5,7 +5,7 @@ Firmware (OS) para **EverDrive / Turbo EverDrive / Turbo ED / FlashMaster / Turb
 Site: https://pcengine.antonioscartezzini.com.br/
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v18** · **Português e inglês** (Menu > Idioma) · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v19** · **Português e inglês** (Menu > Idioma) · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -14,6 +14,7 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 | | |
 |---|---|
 | ![Menu](docs/screenshots/menu.png) | **Interface em português** com acentos de verdade: a fonte ganhou á à â ã é ê í ó ô õ ú ç, maiúsculas, ü º ª. **Banner Retrogamer POA** no topo e **linha de ajuda** com os botões. |
+| ![Quadro do tema](docs/screenshots/painel.png) | **Quadro do tema** no lugar da capa quando o item não tem capa (pastas, raiz, jogos sem capa). O tema **Retrochimp Games** mostra o QR code do WhatsApp do ADM e "Grupo para importação de jogos japoneses baratos! Contate ADM no WhatsApp" (em inglês no modo inglês). |
 | ![Capa](docs/screenshots/capa.png) | **Capa do jogo** ao parar o cursor sobre ele. São 2.372 nomes de arquivo com capa, entre PC Engine e SuperGrafx, incluindo hacks, traduções e "Sounds". |
 | ![Ações](docs/screenshots/acoes.png) | **Tela do jogo** ao apertar RUN ou II: capa, **Carregar**, **Favoritar / Remover favorito** e **Voltar**. **← / →** passam para o jogo anterior / seguinte da pasta. Os jogos carregados entram na lista de **recentes**. |
 | ![Menu](docs/screenshots/menu_principal.png) | **Menu** (botão I na raiz): **Favoritos**, **Recentes**, **Buscar**, **Sobre** e **Idioma**. |
@@ -119,6 +120,7 @@ python tools/test_v12.py     # barra de progresso (gravações na flash idêntic
 python tools/test_v14.py     # splash por tema e barra nas cores do tema
 python tools/test_v15.py     # ← / → na tela do jogo
 python tools/test_v18.py     # idiomas (troca, salvamento, boot em inglês, splash por idioma)
+python tools/test_v19.py     # quadro do tema no lugar da capa
 python tools/screenshots.py  # gera docs/screenshots/
 ```
 

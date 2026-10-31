@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.stdout.reconfigure(encoding='utf-8')
 from machine import Machine, SDCard
 from fatinject import inject
+import build
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'out')
 rom = open(os.path.join(OUT, 'TOS.PCE'), 'rb').read()
@@ -67,7 +68,7 @@ check('switch: DAT byte 24 = 1, header intact', s0[24] == 1 and s0[:12] == b'RGP
 m.press('UP', 2, 10)                     # Sobre / About
 m.press('RUN', 3, 90)
 t = screen(m)
-check('EN about: version + labels', 'OS Version   : EN v18' in t and 'Assembly Date' in t and 'by Antonio' in t)
+check('EN about: version + labels', 'OS Version   : EN v%d' % build.MOD_VERSION in t and 'Assembly Date' in t and 'by Antonio' in t)
 print('\n'.join(l for l in t.splitlines() if l.strip('| 0123456789')))
 m.press('I', 3, 60)                      # about -> menu
 m.press('I', 3, 90)                      # menu -> browser

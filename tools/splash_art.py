@@ -112,6 +112,30 @@ INVADER = ['..X.....X..', '...X...X...', '..XXXXXXX..', '.XX.XXX.XX.', 'XXXXXXXX
 RETROCHIMP_WA = 'https://wa.me/5521983390060'   # group admin's WhatsApp (QR on the splash)
 
 
+def retrochimp_panel(en=False):
+    """96x128 panel for the browser (shown when the selection has no cover): QR + the group's text."""
+    navy, cream, yel, green = (0, 0, 1), (7, 7, 6), (7, 6, 1), (2, 6, 2)
+    s = S(navy)
+    s.im = Image.new('RGB', (96, 128), (255, 0, 255)); s.px = s.im.load()   # magenta = transparent
+    global W, H
+    W0, H0 = W, H
+    W, H = 96, 128
+    try:
+        size = s.qr(RETROCHIMP_WA, 0, 0, 2, navy, cream, border=2)
+        s.im.paste(s.im.crop((0, 0, size, size)), ((96 - size) // 2, 0))
+        s.rect(0, 0, (96 - size) // 2, size, (255, 0, 255))
+        lines = (['Group for', 'importing', 'cheap', 'Japanese', 'games!', 'Contact ADM', 'on WhatsApp'] if en else
+                 ['Grupo para', 'importação', 'de jogos', 'japoneses', 'baratos!', 'Contate ADM', 'no WhatsApp'])
+        cols = [yel] * 5 + [green] * 2
+        for i, (t, c) in enumerate(zip(lines, cols)):
+            s.text(t, size + 3 + i * 9, 1, c)
+    finally:
+        W, H = W0, H0
+    d = os.path.join(ROOT, 'themes', 'paineis')
+    os.makedirs(d, exist_ok=True)
+    s.im.save(os.path.join(d, 'retrochimp_en.png' if en else 'retrochimp.png'))
+
+
 def retrochimp(en=False):
     navy, cream, yel, ora, red, teal = (0, 0, 1), (7, 7, 6), (7, 6, 1), (7, 4, 1), (6, 1, 1), (0, 4, 4)
     s = S(navy)
@@ -175,6 +199,7 @@ if __name__ == '__main__':
     for name, pal in VARIANTS.items():
         poa_variant(name, pal); poa_variant(name, pal, '_en')
     retrochimp(); maddrugamers(); retrochimp(True); maddrugamers(True)
+    retrochimp_panel(); retrochimp_panel(True)
     for f in sorted(os.listdir(OUT)):
         im = Image.open(os.path.join(OUT, f)).convert('RGB')
         print(f, len(set(im.getdata())), 'colours')

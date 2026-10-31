@@ -11,7 +11,9 @@ Layout v3 (512-byte sectors, offsets relative to the file start):
                 byte 24 = language (0 Portuguese, 1 English; written by the cart)
   theme table   32 bytes per theme: 9 colours (u16, VCE format, slot order of build.SLOTS),
                 banner sector u32 (0 = default banner), splash sector u32 (0 = default),
-                English splash sector u32 (0 = same as the Portuguese one, always < 65536), name[2]
+                English splash sector u32 (0 = same as the Portuguese one, always < 65536),
+                panel sector u16 (0 = none; < 8192): a 96x128 art block shown when the selection has
+                no cover, the English one right after it
   splash        sector 0: palette (16 x u16) + tile sector count (u16 at byte 32);
                 8 sectors: BAT (32 rows x 64 words, palette 5, tiles $200+, already in scroll order);
                 then the tiles (4bpp, VRAM order)
@@ -96,6 +98,32 @@ def splash_block(path):
     return bytes(head) + batb + tdata
 
 
+PAINEIS = os.path.join(ROOT, 'themes', 'paineis')
+
+
+def panel_block(path):
+    """96x128 PNG (up to 15 colours; magenta = transparent) -> one art block, pixel exact."""
+    from PIL import Image
+    im = Image.open(path).convert('RGB')
+    if im.size != (artconv.W, artconv.H): raise SystemExit('%s: panel must be 96x128' % path)
+    q = lambda v: min(7, (v * 7 + 127) // 255)
+    px = im.load()
+    cols, idx = [(0, 0, 0)], [[0] * artconv.W for _ in range(artconv.H)]
+    for y in range(artconv.H):
+        for x in range(artconv.W):
+            if px[x, y] == (255, 0, 255): continue
+            c = tuple(q(v) for v in px[x, y])
+            if c not in cols:
+                cols.append(c)
+                if len(cols) > 16: raise SystemExit('%s: more than 15 colours' % path)
+            idx[y][x] = cols.index(c)
+    cols += [(0, 0, 0)] * (16 - len(cols))
+    hdr = bytearray(512)
+    hdr[:4] = ART_MAGIC
+    for i, c in enumerate(cols): struct.pack_into('<H', hdr, 8 + i * 2, vce(c))
+    return bytes(hdr) + artconv.sprite_cells(idx)
+
+
 def banner_block(path):
     """256x16 PNG -> 5 sectors: palette sector + 64 tiles (sequential, palette indices 1-15)."""
     from PIL import Image
@@ -144,7 +172,12 @@ def theme_section(first_sector):
             assert sec < 0x10000    # the cart tells it apart from older .dat files (name bytes) this way
             struct.pack_into('<I', table, i * 32 + 26, sec)
             blocks += splash_block(os.path.join(SPLASHES, t['splash_en']))
-        table[i * 32 + 30:i * 32 + 32] = t['name'].encode('latin-1', 'replace')[:2].ljust(2, b'\0')
+        if t.get('painel'):         # shown instead of a cover when there is none; English right after
+            sec = first_sector + ntab + len(blocks) // 512
+            assert sec < 0x2000         # the cart ignores larger values (older .dat files: name letters)
+            struct.pack_into('<H', table, i * 32 + 30, sec)
+            blocks += panel_block(os.path.join(PAINEIS, t['painel']))
+            blocks += panel_block(os.path.join(PAINEIS, t.get('painel_en', t['painel'])))
     return bytes(table) + blocks, len(themes)
 
 
