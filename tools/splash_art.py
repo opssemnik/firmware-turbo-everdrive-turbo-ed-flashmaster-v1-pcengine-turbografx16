@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image
 import build, art
 from theme_art import CHIMP, JOY, FONT
+BANG = [0x30, 0x30, 0x30, 0x20, 0x20, 0x00, 0x30, 0x00]   # single "!" (the OS font draws "!!")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'themes', 'splashes')
@@ -37,7 +38,7 @@ class S:
 
     def _t(self, codes, x, y, scale, colfn):
         for i, ch in enumerate(codes):
-            g = FONT[(ch - 32) * 8:(ch - 31) * 8]
+            g = BANG if ch == 0x21 else FONT[(ch - 32) * 8:(ch - 31) * 8]
             for gy, bits in enumerate(g):
                 for gx in range(8):
                     if bits & (0x80 >> gx):
@@ -50,6 +51,17 @@ class S:
             for xx, ch in enumerate(r):
                 if ch != '.':
                     self.rect(x + xx * scale, y + yy * scale, scale, scale, pal[ch])
+
+    def qr(self, data, x, y, scale, dark, light, border=2):
+        """QR code (segno) with a light quiet zone of `border` modules."""
+        import segno
+        m = segno.make(data, error='l', micro=False).matrix
+        n = len(m) + 2 * border
+        self.rect(x, y, n * scale, n * scale, light)
+        for r, row in enumerate(m):
+            for c, v in enumerate(row):
+                if v: self.rect(x + (c + border) * scale, y + (r + border) * scale, scale, scale, dark)
+        return n * scale
 
     def save(self, name):
         os.makedirs(OUT, exist_ok=True)
@@ -97,6 +109,9 @@ INVADER = ['..X.....X..', '...X...X...', '..XXXXXXX..', '.XX.XXX.XX.', 'XXXXXXXX
            'X.XXXXXXX.X', 'X.X.....X.X', '...XX.XX...']
 
 
+RETROCHIMP_WA = 'https://wa.me/5521983390060'   # group admin's WhatsApp (QR on the splash)
+
+
 def retrochimp(en=False):
     navy, cream, yel, ora, red, teal = (0, 0, 1), (7, 7, 6), (7, 6, 1), (7, 4, 1), (6, 1, 1), (0, 4, 4)
     s = S(navy)
@@ -117,16 +132,21 @@ def retrochimp(en=False):
     s.set(cx - 30, 167, red); s.set(cx + 29, 167, red)
     s.text('GAMES', 164, 1, navy)
     s.sprite(INVADER, 18, 162, {'X': cream}); s.sprite(INVADER, 227, 162, {'X': cream})
+    # WhatsApp of the group's admin, top right next to the sun
+    size = s.qr(RETROCHIMP_WA, 194, 4, 2, navy, cream)
+    s.text('WhatsApp', 4 + size + 2, 1, (2, 6, 2), x=194 + (size - 64) // 2)
     if en:
-        s.text('Group created by Arnaldo', 180, 1, cream)
-        s.text('Items from Japan, low prices', 190, 1, yel)
-        s.text('Info on WhatsApp', 200, 1, (2, 6, 2))
-        s.text('Press a button', 213, 1, (4, 4, 4))
+        s.text('Group created by Arnaldo', 178, 1, cream)
+        s.text('Group for importing cheap', 187, 1, yel)
+        s.text('Japanese games!', 196, 1, yel)
+        s.text('Contact the ADM on WhatsApp', 205, 1, (2, 6, 2))
+        s.text('Press a button', 215, 1, (4, 4, 4))
     else:
-        s.text('Grupo criado pelo Arnaldo', 180, 1, cream)
-        s.text('Itens do Japão a preços baixos', 190, 1, yel)
-        s.text('Informações no WhatsApp', 200, 1, (2, 6, 2))
-        s.text('Aperte um botão', 213, 1, (4, 4, 4))
+        s.text('Grupo criado pelo Arnaldo', 178, 1, cream)
+        s.text('Grupo para importação de jogos', 187, 1, yel)
+        s.text('japoneses baratos!', 196, 1, yel)
+        s.text('Contate o ADM no WhatsApp', 205, 1, (2, 6, 2))
+        s.text('Aperte um botão', 215, 1, (4, 4, 4))
     s.save('retrochimp_en' if en else 'retrochimp')
 
 
