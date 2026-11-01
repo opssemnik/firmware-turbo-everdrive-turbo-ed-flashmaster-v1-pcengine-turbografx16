@@ -140,6 +140,7 @@ class Machine:
         self.erase_busy = 0                    # status reads left with "flash busy"
         self.erase_reads = 0                   # per erased bank; 0 = erase finishes at once
         self.fast_idle = True                  # skip the vsync wait loop (see run_cycles)
+        self.psg_log = None
         self.idle_acc = 0
         self.sd = sd
         self.flash_writes = []
@@ -168,7 +169,7 @@ class Machine:
     def restore(blob):
         import pickle
         m = pickle.loads(blob)
-        for k, v in (('erase_armed', False), ('erase_busy', 0), ('erase_reads', 0), ('fast_idle', True), ('idle_acc', 0)):
+        for k, v in (('erase_armed', False), ('erase_busy', 0), ('erase_reads', 0), ('fast_idle', True), ('idle_acc', 0), ('psg_log', None)):
             m.__dict__.setdefault(k, v)          # snapshots from older emulator versions
         m.cpu.irq_pending = m._irq
         return m
@@ -279,7 +280,9 @@ class Machine:
                 self.cram[self.vce_addr] = (self.cram[self.vce_addr] & 0xff) | ((v & 1) << 8)
                 self.vce_addr = (self.vce_addr + 1) & 0x1ff
             return
-        if off < 0xc00: return
+        if off < 0xc00:                        # PSG: only recorded (psg_log = [] to enable)
+            if self.psg_log is not None: self.psg_log.append((self.cpu.cycles, off & 0xf, v))
+            return
         if off < 0x1000:
             if off & 1:
                 if (v & 1) and not self.timer_on: self.timer_cnt = self.timer_reload

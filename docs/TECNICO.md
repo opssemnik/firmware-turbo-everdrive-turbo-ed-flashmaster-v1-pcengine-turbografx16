@@ -190,6 +190,15 @@ O código do banco 13 roda com interrupções desligadas sempre que mexe no VDC 
 - No `art_tick`, quando a busca da capa falha (`art_load` com C=1), `theme_panel` carrega esse bloco com o mesmo código da capa (`al_found`) e mostra o painel. Valores ≥ 8192 são ignorados: nos `.dat` antigos esses bytes têm 2 letras do nome do tema (sempre ≥ `$2020`), e o arquivo tem bem menos de 8192 setores.
 - O setor fica em `PANSEC` (`$205D`), lido no `theme_dat`. Ao trocar de tema (`theme_next`), o painel é escondido e a seleção esquecida, para recarregar.
 
+### Música (v20)
+- O IRQ de vsync do HuC tem um gancho do usuário que o OS não usa: com o bit 4 de `$F5` ligado, ele faz `jmp [$2208]` a cada quadro, em qualquer tela. O mod aponta `$2208` para `mus_irq` (banco 0, `$FF63`), e **o próprio bit 4 é o estado "música ligada"**.
+- `mus_irq` só chama o player se o MPR4 for o banco 12: algumas rotinas do banco 1 trocam o MPR4 por um instante; nesses quadros o tick é pulado.
+- Player no banco 12 (`tools/extra_asm.py`, dados de `tools/music.py`): 4 canais (PSG 0–2 com formas de onda próprias, PSG 4 em ruído para a bateria). Eventos `nota, quadros`, `$FF` volta ao início; envelope por canal (volume inicial, passo, quadros por passo, piso). Usa o ponteiro de página zero `$3E/$3F`, salvo e restaurado dentro do IRQ.
+- RAM do player: `$2C60+`, dentro da área das rotinas de gravar a flash (`$2B8E`–`$2C8D`). `prog_setup` e `prog_erase` chamam `music_stop` (desliga o bit 4 e silencia os 6 canais) antes de copiar as rotinas por cima.
+- Ponto de entrada no banco 12: tabela de saltos em `$8200` (`game_nav`, `music_tick`, `music_start`, `music_stop`).
+- `RGPOA.DAT` byte 26: 1 = música desligada (0, o padrão dos `.dat` antigos, = ligada). Lido no `dat_init` (na abertura) e gravado pela opção do menu.
+- `tools/machine.py` registra as escritas no PSG (`psg_log`); `tools/music.py` as transforma em WAV, e `test_v20` confere que as notas tocadas batem com a composição.
+
 ### Salvamento do tema
 - Toda gravação passa por `write_scr` (CMD24). Ela só aceita os setores 0–10 do `RGPOA.DAT` e recusa o arquivo se ele estiver antes de `$30B5`.
 - Antes de gravar, quem chama relê o setor e confere a assinatura dele.

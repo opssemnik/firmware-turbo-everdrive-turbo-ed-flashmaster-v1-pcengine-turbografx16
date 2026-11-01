@@ -254,6 +254,9 @@ EBLK = $2045
 ESTEP = $2046
 
 prog_setup:             ; copy phase. X = number of 8 KB banks to copy
+    phx
+    jsr MUSIC_STOP      ; the player's RAM is about to become the flash routine
+    plx
     tii ld_routine,$2b8e,$0100
     jsr bar_frame
     sty LD_STEP_RAM     ; patch the routine's "lda #step"
@@ -261,6 +264,9 @@ prog_setup:             ; copy phase. X = number of 8 KB banks to copy
     rts
 
 prog_erase:             ; erase phase: a block walks along the empty bar while the chip works
+    phx
+    jsr MUSIC_STOP
+    plx
     tii er_routine,$2b8e,$0100
     jsr bar_frame
     lda TMP

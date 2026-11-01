@@ -11,8 +11,9 @@ import cart_asm
 import search_asm
 import loader_asm
 import extra_asm
+import music
 
-MOD_VERSION = 19
+MOD_VERSION = 20
 VERSION_STR = 'PT-BR v%d' % MOD_VERSION
 VERSION_STR_EN = 'EN v%d' % MOD_VERSION
 STOCK_MD5 = '38241a96caa1573f9caf20a2b52dd3e8'
@@ -148,8 +149,17 @@ def vce(rgb):
     return (g << 6) | (r << 3) | bl
 
 # ---------------------------------------------------------------- code
+MUS_IRQ = 0xff63         # first thing in the bank 0 hook area: its address is fixed
 JOYHOOK = """
 ; bank 0 free space, always mapped at $e000.
+mus_irq:                ; HuC user vsync hook ($2208): the music player, if bank 12 is mapped
+    tma #$10
+    cmp #$0c
+    bne mi_r
+    jmp MUSIC_TICK
+mi_r:
+    rts
+
 joyhook:                ; replaces "jsr joy" in the file browser's wait-for-key loop
     jsr $f8e9           ; joy(0): X = buttons, A = extended
     phx
@@ -483,7 +493,8 @@ def build(src, dst):
     tsym.update({'B15_BANPAL': 0x7000, 'B15_SPLPAL': 0x7020, 'B15_BANMAP': 0x7040,
                  'B15_HELPMAP': sym['str_help'], 'B15_BANTILES': 0x7100})   # help line: string bank
     tables += cart_asm.tables(enc)
-    tsym.update({'SEARCH_BANK': SPLASH_BANKS[1], 'SEARCH_ENTRY': search_asm.ORG, 'GAME_NAV': extra_asm.ORG})
+    tsym.update({'SEARCH_BANK': SPLASH_BANKS[1], 'SEARCH_ENTRY': search_asm.ORG, 'MUS_IRQ': MUS_IRQ})
+    tsym.update(extra_asm.ENTRY)
     # loading progress: the OS's RAM copy routine, rebuilt with a bar block per 8 KB bank
     lsym = {'PCNT': loader_asm.PCNT, 'BAR_FULL': 0x71c1}
     lcode, lsym = assemble(loader_asm.ROUTINE, loader_asm.RAM_ORG, lsym)
@@ -502,9 +513,11 @@ def build(src, dst):
     scode, _ = assemble(search_asm.SRC + search_asm.tables(enc), search_asm.ORG, dict(tsym))
     if len(scode) > 0x800: raise SystemExit('search module too big: %d' % len(scode))
     rom.put(foff(SPLASH_BANKS[1], search_asm.ORG), scode)
-    xcode, xsym = assemble(extra_asm.SRC, extra_asm.ORG, dict(tsym))   # bank 12, always at $8000
-    assert xsym['game_nav'] == extra_asm.ORG
-    if extra_asm.ORG + len(xcode) > 0xa000: raise SystemExit('bank 12 module too big')
+    xcode, xsym = assemble(extra_asm.SRC + music.tables(), extra_asm.ORG, dict(tsym))   # bank 12, at $8000
+    for name, addr in extra_asm.ENTRY.items():
+        assert xcode[addr - extra_asm.ORG] == 0x4c, name                  # jump table
+    if extra_asm.ORG + len(xcode) > extra_asm.END: raise SystemExit('bank 12 module too big: %d' % len(xcode))
+    print('  bank 12 module %d bytes (free %d)' % (len(xcode), extra_asm.END - extra_asm.ORG - len(xcode)))
     rom.put(foff(12, extra_asm.ORG), xcode)
 
     # 5. about screen: version text + credits; splash hook (bank 11, $a000)
@@ -520,7 +533,8 @@ def build(src, dst):
     rom.d[foff(11, 0xad55):foff(11, 0xad57)] = bytes([sym['splash_entry'] & 0xff, sym['splash_entry'] >> 8])
 
     # 6. bank 0: SELECT/help hook + cls hook; vsync IRQ scrolls the BG by BG_SCROLL
-    jcode, jsym = assemble(JOYHOOK, 0xff63, {k: tsym[k] for k in ('idle', 'banner_draw', 'action', 'hub', 'prog_setup', 'prog_erase')})
+    jcode, jsym = assemble(JOYHOOK, MUS_IRQ, {k: tsym[k] for k in ('idle', 'banner_draw', 'action', 'hub', 'prog_setup', 'prog_erase', 'MUSIC_TICK')})
+    assert jsym['mus_irq'] == MUS_IRQ
     if 0xff63 + len(jcode) > 0xfff6: raise SystemExit('bank 0 hook overflow')
     rom.put(foff(0, 0xff63), jcode)
     rom.expect(foff(10, 0xa567), '20 e9 f8')

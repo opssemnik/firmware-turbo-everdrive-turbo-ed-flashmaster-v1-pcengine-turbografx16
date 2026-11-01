@@ -5,7 +5,7 @@ Firmware (OS) para **EverDrive / Turbo EverDrive / Turbo ED / FlashMaster / Turb
 Site: https://pcengine.antonioscartezzini.com.br/
 Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4/.
 
-**Versão atual: PT-BR v19** · **Português e inglês** (Menu > Idioma) · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
+**Versão atual: PT-BR v20** · **Português e inglês** (Menu > Idioma) · Mod: **Retrogamer POA**, por **Antonio & The Nobre**
 
 ![Splash](docs/screenshots/splash.png)
 
@@ -17,7 +17,8 @@ Base: OS v4 original, de https://krikzz.com/pub/support/turbo-everdrive/v1/os/v4
 | ![Quadro do tema](docs/screenshots/painel.png) | **Quadro do tema** no lugar da capa quando o item não tem capa (pastas, raiz, jogos sem capa). O tema **Retrochimp Games** mostra o QR code do WhatsApp do ADM e "Grupo para importação de jogos japoneses baratos! Contate ADM no WhatsApp" (em inglês no modo inglês). |
 | ![Capa](docs/screenshots/capa.png) | **Capa do jogo** ao parar o cursor sobre ele. São 2.372 nomes de arquivo com capa, entre PC Engine e SuperGrafx, incluindo hacks, traduções e "Sounds". |
 | ![Ações](docs/screenshots/acoes.png) | **Tela do jogo** ao apertar RUN ou II: capa, **Carregar**, **Favoritar / Remover favorito** e **Voltar**. **← / →** passam para o jogo anterior / seguinte da pasta. Os jogos carregados entram na lista de **recentes**. |
-| ![Menu](docs/screenshots/menu_principal.png) | **Menu** (botão I na raiz): **Favoritos**, **Recentes**, **Buscar**, **Sobre** e **Idioma**. |
+| ![Menu](docs/screenshots/menu_principal.png) | **Menu** (botão I na raiz): **Favoritos**, **Recentes**, **Buscar**, **Sobre**, **Idioma** e **Música**. |
+| 🎵 | **Música no menu**: uma trilha chiptune original toca desde a abertura, em todas as telas do OS, e para sozinha ao carregar um jogo. Menu > **Música: Ligada / Desligada** (RUN) liga ou desliga, e a escolha fica salva no `RGPOA.DAT`. [Ouça a prévia](docs/musica.wav) (gerada pelo player rodando no emulador). |
 | ![Menu em inglês](docs/screenshots/menu_en.png) | **Dois idiomas no mesmo OS**: em Menu > **Idioma**, RUN troca entre **Português** e **English** na hora. A escolha fica salva no `RGPOA.DAT` e o console já liga no idioma escolhido, inclusive a splash. |
 | ![Tela do jogo em inglês](docs/screenshots/acoes_en.png) | Em inglês, todas as telas mudam: navegador, tela do jogo, menu, listas, busca, Sobre, carregamento e a linha de ajuda. |
 | ![Favoritos](docs/screenshots/favoritos.png) | **Listas de favoritos e recentes**: escolher um jogo leva direto até ele (o OS entra na pasta, o cursor vai até o jogo e a tela do jogo abre). Favoritos e recentes ficam salvos no `RGPOA.DAT`. |
@@ -121,6 +122,8 @@ python tools/test_v14.py     # splash por tema e barra nas cores do tema
 python tools/test_v15.py     # ← / → na tela do jogo
 python tools/test_v18.py     # idiomas (troca, salvamento, boot em inglês, splash por idioma)
 python tools/test_v19.py     # quadro do tema no lugar da capa
+python tools/test_v20.py     # música: toca nas telas, liga/desliga, salva, para antes de gravar a flash
+python tools/music.py        # prévia da música: out/musica.wav, gravada do PSG no emulador
 python tools/screenshots.py  # gera docs/screenshots/
 ```
 

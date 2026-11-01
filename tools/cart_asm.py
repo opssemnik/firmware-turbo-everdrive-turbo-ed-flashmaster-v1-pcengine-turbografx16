@@ -674,6 +674,11 @@ di_found:
     lda $0002           ; word 12: language
     and #$01
     jsr lang_set
+    lda $0003
+    lda $0002           ; word 13: 1 = music off
+    bne di_nomus
+    jsr MUSIC_START
+di_nomus:
     jsr theme_cur       ; saves the stock bar colour on first use
     jsr theme_count
     sta TMP
@@ -809,6 +814,13 @@ ws_bad:
     sec
     rts
 
+dat_save_music:         ; music state -> byte 26 of sector 0 (1 = off)
+    ldx #$01
+    bbr4 <$f5,dsm_off
+    clx
+dsm_off:
+    ldy #13
+    bra ds_word
 dat_save_lang:          ; current language -> byte 24 of sector 0
     jsr lang_cur
     tax
@@ -1104,8 +1116,8 @@ def tables(enc):
     t += '\nslot_magic: .db "RGPOA-SLOT"'
     t += '\nopt_row: .db 5,8,11'
     t += '\nopt_tab: .dw s_load,s_fav,s_back,s_unfav'
-    t += '\nhub_row: .db 5,8,11,14,17'
-    t += '\nhub_tab: .dw s_mfav,s_mrec,s_msearch,s_mabout,s_mlang'
+    t += '\nhub_row: .db 5,8,11,14,17,20'
+    t += '\nhub_tab: .dw s_mfav,s_mrec,s_msearch,s_mabout,s_mlang,s_mmus_on,s_mmus_off'
     t += '\ntitle_tab: .dw s_tfav,s_trec'
     t += '\nstrbanks: .db STRBANK_PT,STRBANK_EN'
     return t        # the strings themselves live in the string banks (build.py)
@@ -1134,6 +1146,8 @@ MENU_STRINGS = {  # padded so a shorter text erases a longer one
     's_empty':   'Nenhum jogo nesta lista.',
     's_hint_list': 'RUN/II: ir ao jogo  I: menu  ',
     's_mlang':   '  Idioma: Português',
+    's_mmus_on':  '  Música: Ligada   ',
+    's_mmus_off': '  Música: Desligada',
 }
 MENU_STRINGS_EN = {
     's_load':    '  Load            ',
@@ -1158,6 +1172,8 @@ MENU_STRINGS_EN = {
     's_empty':   'No games in this list.',
     's_hint_list': 'RUN/II: go to game  I: menu  ',
     's_mlang':   '  Language: English',
+    's_mmus_on':  '  Music: On        ',
+    's_mmus_off': '  Music: Off       ',
 }
 
 
@@ -1894,12 +1910,12 @@ hub_loop:
     bit #$0a
     bne hub_ok
     bit #$01
-    bne hub_back
+    jne hub_back
     bra hub_loop
 hub_up:
     lda HCUR
     bne hub_up1
-    lda #$05
+    lda #$06
 hub_up1:
     dec a
     sta HCUR
@@ -1907,7 +1923,7 @@ hub_up1:
 hub_dn:
     lda HCUR
     inc a
-    cmp #$05
+    cmp #$06
     bcc hub_dn1
     cla
 hub_dn1:
@@ -1921,6 +1937,8 @@ hub_upd:
     bra hub_loop
 hub_ok:
     lda HCUR
+    cmp #$05
+    beq hub_music
     cmp #$04
     beq hub_lang
     cmp #$03
@@ -1966,6 +1984,19 @@ hub_back:
     jsr $eda9
     cla
     rts
+hub_music:              ; Música: on/off, saved
+    sei
+    bbs4 <$f5,hm_off
+    jsr MUSIC_START
+    bra hm_save
+hm_off:
+    jsr MUSIC_STOP
+hm_save:
+    jsr dat_save_music
+    lda <$f7
+    sta $0000
+    cli
+    jmp hub_upd
 hub_lang:               ; Idioma / Language: switch the string bank and save the choice
     jsr lang_cur
     eor #$01
@@ -1993,6 +2024,11 @@ hd_opt:
     lda ADI
     asl a
     tax
+    cpx #10             ; option 5 (music): the "off" label follows the table
+    bne hd_lbl
+    bbs4 <$f5,hd_lbl
+    ldx #12
+hd_lbl:
     lda hub_tab,x
     sta T
     lda hub_tab+1,x
@@ -2025,7 +2061,7 @@ hd_put:
 hd_next:
     inc ADI
     lda ADI
-    cmp #$05
+    cmp #$06
     bne hd_opt
     lda #lo(s_hint_menu)
     sta T
